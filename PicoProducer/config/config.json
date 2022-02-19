@@ -1,16 +1,29 @@
 {
   "channels": {
     "skim": "skimjob.py", 
-    "skim-jec": "skimjob.py --jec-sys",
+    "skim-jec": "skimjob.py --jec-sys", 
     "gen": "GenDumper", 
-    "mutau": "ModuleMuTauSimple"
+    "mutau": "ModuleMuTauSimple", 
+    "mumutau": "JetTauFakeRate.ModuleMuMuTau",
+    "eetau": "JetTauFakeRate.ModuleEETau"
   }, 
   "eras": {
     "2016": "examples/samples_2016.py", 
     "2017": "examples/samples_2017.py", 
-    "2018": "examples/samples_2018.py"
+    "2018": "examples/samples_2018.py", 
+    "UL2018": "samples_UL2018.py"
   }, 
   "nfilesperjob": 1, 
   "filelistdir": "samples/files/$ERA/$SAMPLE.txt", 
-  "jobdir": "output/$ERA/$CHANNEL/$SAMPLE"
+  "jobdir": "output/$ERA/$CHANNEL/$SAMPLE", 
+  "basedir": "/afs/cern.ch/user/c/christok/TauFRPOG/CMSSW_10_6_13/src/TauFW/PicoProducer", 
+  "outdir": "/eos/user/c/christok/output/$ERA/$CHANNEL/$SAMPLE", 
+  "nanodir": "/eos/user/c/christok/samples/nano/$ERA/$DAS", 
+  "picodir": "/eos/user/c/christok/analysis/$ERA/$GROUP", 
+  "tmpskimdir": "", 
+  "batch": "HTCondor", 
+  "queue": "", 
+  "maxevtsperjob": -1, 
+  "maxopenfiles": 500, 
+  "ncores": 4
 }
