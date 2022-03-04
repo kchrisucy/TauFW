@@ -74,7 +74,9 @@ class ModuleMuMuTau(Module):
     self.outfile.cd()
 
     
-    self.jetCutPt   = 30
+    #print "Hi you are in mumutau after muSF"
+
+    self.jetCutPt   = 30.0
     self.bjetCutEta = 2.4 if self.era==2016 else 2.5
     self.deepjet_wp = BTagWPs('DeepJet',era=self.era)
 
@@ -88,11 +90,13 @@ class ModuleMuMuTau(Module):
     self.cut_muon = 2
     self.cut_tau  = 3
     self.cut_pair = 4
+    self.cut_weight = 16 ## needed for sumbinw
     self.cutflow.GetXaxis().SetBinLabel(1+self.cut_none, "no cut"  )
     self.cutflow.GetXaxis().SetBinLabel(1+self.cut_trig, "trigger" )
     self.cutflow.GetXaxis().SetBinLabel(1+self.cut_muon, "muon"    )
     self.cutflow.GetXaxis().SetBinLabel(1+self.cut_tau,  "tau"     )
     self.cutflow.GetXaxis().SetBinLabel(1+self.cut_pair, "pair"    )
+    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_weight, "no cut, weighted" )
 
 
     # TREE
@@ -137,7 +141,6 @@ class ModuleMuMuTau(Module):
     self.iso_tau  = np.zeros(1,dtype='f')
     ## Jet to tau FR
     self.IsOnZ              = np.zeros(1,dtype='?')
-    self.NTaus              = np.zeros(1,dtype='i')
     self.TauIsGenuine       = np.zeros(1,dtype='?')
     self.TauPt              = np.zeros(1,dtype='f')
     self.TauEta             = np.zeros(1,dtype='f')
@@ -196,7 +199,6 @@ class ModuleMuMuTau(Module):
     self.tree.Branch('iso_tau',  self.iso_tau, 'iso_tau/F')
     ## Jet to tau FR
     self.tree.Branch("IsOnZ"           ,  self.IsOnZ           , "IsOnZ/O"            )           
-    self.tree.Branch("NTaus"           ,  self.NTaus           , "NTaus/I"            )           
     self.tree.Branch("TauIsGenuine"    ,  self.TauIsGenuine    , "TauIsGenuine/O"     )           
     self.tree.Branch("TauPt"           ,  self.TauPt           , "TauPt/F"            )           
     self.tree.Branch("TauEta"          ,  self.TauEta          , "TauEta/F"           ) 
@@ -224,9 +226,22 @@ class ModuleMuMuTau(Module):
   def analyze(self, event):
     """Process event, return True (pass, go to next module) or False (fail, go to next event)."""
     
+    # EVENT
+    #print "New event"
+    #print event.event
+    #eventNum = event.event & 0xffffffffffffffff
+    #self.evt[0]             = eventNum
+    #print type(event.event)
+    #print event.event & 0xffffffffffffffff #, type(event.event & 0xffffffffffffffff)
     self.evt[0]             = event.event & 0xffffffffffffffff 
     # NO CUT
     self.cutflow.Fill(self.cut_none)
+    ## needed for sumbinw######################################
+    if self.isdata:
+      self.cutflow.Fill(self.cut_weight, 1.)
+    else:
+      self.cutflow.Fill(self.cut_weight, event.genWeight)
+    ###########################################################
     
     # TRIGGER
     if self.era=="2016" or self.era=="UL2016":
@@ -252,7 +267,7 @@ class ModuleMuMuTau(Module):
     MatchedTrigger = False
     for selmuon in muons:
       # if not self.trigger.match(event,muon): continue ## fixme
-      if muon.pt<self.muonTrgPt : continue
+      if selmuon.pt<self.muonTrgPt : continue
       MatchedTrigger = True
     if not MatchedTrigger : return False
     ################################
@@ -270,21 +285,19 @@ class ModuleMuMuTau(Module):
       if tau.idDeepTau2017v2p1VSmu<8: continue # tight Vsmu 
       if tau.idDeepTau2017v2p1VSjet<1: continue # start with VVVL versusJets
       taus.append(tau)
-    #if len(taus)!=1: return False
+    if len(taus)!=1: return False
     self.cutflow.Fill(self.cut_tau)
 
     # Leptons
     muon0 = muons[0]
     muon1 = muons[1]
-    if len(taus) > 0 :
-      tau   = max(taus,key=lambda p: p.pt)
+    tau   = max(taus,key=lambda p: p.pt)
 
     # Leptons dR
     #muon = max(muons,key=lambda p: p.pt)
     if muon0.DeltaR(muon1)<0.4: return False
-    if len(taus) > 0 :
-      if muon0.DeltaR(tau)<0.4: return False
-      if muon1.DeltaR(tau)<0.4: return False
+    if muon0.DeltaR(tau)<0.4: return False
+    if muon1.DeltaR(tau)<0.4: return False
     self.cutflow.Fill(self.cut_pair)
     
     # VETO for extraMuons
@@ -296,8 +309,7 @@ class ModuleMuMuTau(Module):
       if abs(muon.dz)>0.2: continue
       if abs(muon.dxy)>0.045: continue
       if muon.pfRelIso04_all>0.3: continue
-      if len(taus) > 0 :
-        if any(muon.DeltaR(tau)<0.4 for tau in taus): continue
+      if any(muon.DeltaR(tau)<0.4 for tau in taus): continue
       if muon.looseId and all(m._index!=muon._index for m in muons):
         looseMuons.append(muon)
         extramuon_veto = True
@@ -313,18 +325,16 @@ class ModuleMuMuTau(Module):
       if abs(electron.dz)>0.2: continue
       if abs(electron.dxy)>0.045: continue
       if electron.pfRelIso03_all>0.3: continue
-      if len(taus) > 0 :
-        if any(electron.DeltaR(tau)<0.4 for tau in taus): continue
+      if any(electron.DeltaR(tau)<0.4 for tau in taus): continue
+      if any(electron.DeltaR(muon)<0.3 for muon in muons): continue ## remove overlap with selected muons as well !?! dR<0.3 optimal???
       if electron.convVeto==1 and electron.lostHits<=1 and electron.mvaFall17V2noIso_WPL:
         Electrons.append(electron)
         elec_veto = True
     if elec_veto : return False
     
     # SELECT JETS
-    if len(taus) > 0 :
-      jets, bjets = fillJetBranches(self,event,tau)
-    else :
-      jets, bjets = fillJetBranchesNoTau(self,event)
+    #jets, bjets, met = fillJetBranches(self,event,tau)
+    jets, bjets = fillJetBranches(self,event,tau,muons)
     is0b = False
     if(len(bjets) == 0) : is0b = True
     MET = event.MET_pt    
@@ -368,16 +378,15 @@ class ModuleMuMuTau(Module):
       self.ltfweight_tau[0]    = 1.0
       self.ltfweight_tau[0]    = 1.0
       
-      if len(taus) > 0 :
-        if tau.genPartFlav==5: # real tau
-          self.idweightTdm_tau[0]  = self.tauSFsT_dm.getSFvsDM(tau.pt,tau.decayMode)
-          self.idweightT_tau[0]    = self.tauSFsT.getSFvsPT(tau.pt)
-          self.idweightM_tau[0]    = self.tauSFsM.getSFvsPT(tau.pt) 
-          self.idweightVVVL_tau[0] = self.tauSFsVVVL.getSFvsPT(tau.pt)
-        elif tau.genPartFlav in [1,3]: # e -> tau fake                       
-          self.ltfweight_tau[0]    = self.etfSFs.getSFvsEta(tau.eta,tau.genPartFlav)
-        elif tau.genPartFlav in [2,4]: # mu -> tau fake                             
-          self.ltfweight_tau[0]    = self.mtfSFs.getSFvsEta(tau.eta,tau.genPartFlav)
+      if tau.genPartFlav==5: # real tau
+        self.idweightTdm_tau[0]  = self.tauSFsT_dm.getSFvsDM(tau.pt,tau.decayMode)
+        self.idweightT_tau[0]    = self.tauSFsT.getSFvsPT(tau.pt)
+        self.idweightM_tau[0]    = self.tauSFsM.getSFvsPT(tau.pt) 
+        self.idweightVVVL_tau[0] = self.tauSFsVVVL.getSFvsPT(tau.pt)
+      elif tau.genPartFlav in [1,3]: # e -> tau fake                       
+        self.ltfweight_tau[0]    = self.etfSFs.getSFvsEta(tau.eta,tau.genPartFlav)
+      elif tau.genPartFlav in [2,4]: # mu -> tau fake                             
+        self.ltfweight_tau[0]    = self.mtfSFs.getSFvsEta(tau.eta,tau.genPartFlav)
 
 
     # SAVE CONTROL VARIABLES
@@ -391,15 +400,13 @@ class ModuleMuMuTau(Module):
     self.q_mu1[0]    = muon1.charge
     self.id_mu1[0]   = muon1.tightId
     self.iso_mu1[0]  = muon1.pfRelIso04_all
-    if len(taus) > 0 :
-      self.pt_tau[0]   = tau.pt
-      self.eta_tau[0]  = tau.eta
-      self.q_tau[0]    = tau.charge
-      self.id_tau[0]   = tau.idDeepTau2017v2p1VSjet
-      self.iso_tau[0]  = tau.rawIso
+    self.pt_tau[0]   = tau.pt
+    self.eta_tau[0]  = tau.eta
+    self.q_tau[0]    = tau.charge
+    self.id_tau[0]   = tau.idDeepTau2017v2p1VSjet
+    self.iso_tau[0]  = tau.rawIso
 
-    if len(taus) > 0 :
-      isGenuineTau = getIsGenuineTau(self,tau)
+    isGenuineTau = getIsGenuineTau(self,tau)
     #print "Tau has pt=%s, eta=%s, dz = %s, genPartFlav = %s"%(tau.pt, tau.eta, tau.dz, tau.genPartFlav)
     
     # Event Vars
@@ -409,8 +416,7 @@ class ModuleMuMuTau(Module):
   
     for jet in jets: HT += jet.pt
     for mu in muons: LT += mu.pt
-    if len(taus) > 0 :
-      LT += tau.pt
+    LT += tau.pt
     ST = HT + LT + MET
     
     #DiLepton Vars
@@ -421,11 +427,10 @@ class ModuleMuMuTau(Module):
     
     ##jet to tau fake rate method
     IsOnZ             = isOnZ
-    if len(taus) > 0 :
-      TauIsGenuine      = isGenuineTau
-      TauPt             = tau.pt
-      TauEta            = tau.eta
-      TauDM             = tau.decayMode
+    TauIsGenuine      = isGenuineTau
+    TauPt             = tau.pt
+    TauEta            = tau.eta
+    TauDM             = tau.decayMode
     JetN              = len(jets)
     BJetN             = len(bjets)
     LeptonOnePt       = muon0.pt
@@ -436,13 +441,11 @@ class ModuleMuMuTau(Module):
     DileptonDeltaPhi  = deltaPhi(muon0.phi,muon1.phi)
     DileptonDeltaR    = muon0.DeltaR(muon1)
     
-    self.NTaus[0]              = len(taus)
     self.IsOnZ[0]              = IsOnZ
-    if len(taus) > 0 :
-      self.TauIsGenuine[0]       = TauIsGenuine
-      self.TauPt[0]              = TauPt           
-      self.TauEta[0]             = TauEta          
-      self.TauDM[0]              = TauDM
+    self.TauIsGenuine[0]       = TauIsGenuine
+    self.TauPt[0]              = TauPt           
+    self.TauEta[0]             = TauEta          
+    self.TauDM[0]              = TauDM
     self.JetN[0]               = JetN            
     self.BJetN[0]              = BJetN         
     self.MET[0]                = MET              
@@ -463,7 +466,7 @@ class ModuleMuMuTau(Module):
     return True
 
 ## Functions
-def fillJetBranches(self,event,tau):
+def fillJetBranches(self,event,tau, muons):
   """Help function to select jets and b tags, after removing overlap with tau decay candidates """
   jets,   bjets  = [ ], [ ]
   
@@ -471,23 +474,7 @@ def fillJetBranches(self,event,tau):
   for jet in Collection(event,'Jet'):
     if abs(jet.eta)>2.4: continue #4.7: continue
     if jet.DeltaR(tau)<0.5: continue
-    if jet.jetId<2: continue # Tight
-    if jet.pt<self.jetCutPt: continue
-    jets.append(jet)
-
-    # B TAGGING
-    if jet.btagDeepFlavB>self.deepjet_wp.medium and abs(jet.eta)<self.bjetCutEta:
-      bjets.append(jet)
-
-  return jets, bjets
-
-def fillJetBranchesNoTau(self,event):
-  """Help function to select jets and b tags"""
-  jets,   bjets  = [ ], [ ]
-  
-  # SELECT JET
-  for jet in Collection(event,'Jet'):
-    if abs(jet.eta)>2.4: continue #4.7: continue
+    if any(jet.DeltaR(muon)<0.4 for muon in muons): continue ## remove overlap with selected muons as well !?! dR<0.4 optimal???
     if jet.jetId<2: continue # Tight
     if jet.pt<self.jetCutPt: continue
     jets.append(jet)
