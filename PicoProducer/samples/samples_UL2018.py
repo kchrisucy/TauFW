@@ -69,6 +69,9 @@ samples  = [
   M('ST','ST_t-channel_top',
     "/ST_t-channel_top_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/RunIISummer19UL18NanoAODv2-106X_upgrade2018_realistic_v15_L1v1-v1/NANOAODSIM", # BUGGY Summer19
     store=storage,url=url,files=filelist,opts="useT1=True"),
+  M('ST','ST_s-channel',
+    "/ST_s-channel_4f_leptonDecays_TuneCP5_13TeV-amcatnlo-pythia8/RunIISummer20UL18NanoAODv2-106X_upgrade2018_realistic_v15_L1v1-v1/NANOAODSIM",
+    store=storage,url=url,files=filelist,opts="useT1=True"),
   
   # DIBOSON
   M('VV','WW',
