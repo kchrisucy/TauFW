@@ -18,10 +18,8 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
     LOG.header("Estimating jet-to-tau misidentification for variables %s"%(', '.join(v.filename for v in variables)))
     #LOG.verbose("\n>>> estimating QCD for variable %s"%(self.var),verbosity,level=2)
   cuts_Tight        = selection.selection
-  #cuts_0b_Tight        = cuts_1b.replace("BJetN>=1","BJetN==0") 
-  #cuts_0b_TightGenuine = cuts_1b.replace("BJetN>=1","BJetN==0 && TauIsGenuine")
   cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16","id_tau >= 1 && id_tau <= 16").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos, 
-  #cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16","id_tau >= 1").replace("TauIsGenuine","!TauIsGenuine") ## just check
+  #cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16","id_tau >= 1").replace("TauIsGenuine","!TauIsGenuine") ## for Loose  histos
   ##                                                                                               you should pass the wps as arguments of the JetToTau_MisID
   #isjetcat       = re.search(r"(nc?btag|n[cf]?jets)",cuts_OS)
   #relax          = 'emu' in self.channel or isjetcat
@@ -51,7 +49,7 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
   prongs = ["1prong","3prong"]
   ptList = [20, 25 , 30 , 40 , 50 , 80]
   
-  dirList = ["plots/UL2018/TauFakeRate_UL2018_MuMuTau"]
+  dirList = ["plots/UL2018/TauFakeRate_UL2018_mumutau"]
   FRDict = {}
 
   ## Selections for prong-eta-pT bins, read the values for FakeRates for each prong-eta bin
@@ -70,9 +68,9 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
       name__ = "%s_eta%s"%(name_,eta)
       tit__  = "%s, %s"%(tit_,eta)
       if eta =="Barrel":
-        cut__ = "%s && TauEta<1.5"%(cut_)
+        cut__ = "%s && abs(TauEta)<1.5"%(cut_)
       else: # eta =="Endcap":
-        cut__ = "%s && TauEta<2.4"%(cut_)
+        cut__ = "%s && abs(TauEta)>1.5 && abs(TauEta)<2.4"%(cut_)
       FakeRates = fakeFactors.FakeFactors(dirList, "Data", prong, eta, None, "mumutau") ## read the values for FakeRates for each prong-eta bin
       FRDictinPt  = {}
       FRDictinPt  = FakeRates.valuesDict
@@ -107,19 +105,23 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
         misIDhist = exphists[0].Clone(makehistname(variable.filename,name,tag)) # $VAR_$PROCESS$TAG 
         misIDhist.Reset()
         misIDhist.SetTitle(title)
-        misIDhist.SetFillColor(ROOT.kOrange-2)#getcolor('QCD'))
+        misIDhist.SetFillColor(ROOT.kOrange-2)
         misIDhist.SetOption('HIST')
         misIDhists.append(misIDhist)
         b_misIDhists_init = True
     ##############################################################
-    
+
     # Now, for each variable, you should calculate the contribution of the fakes and add it to the above histos # Maybe use datahist instead of exphist to initialize above?
-    args_LnotTFake  = variables, selection.selection
+    args_LnotTFake  = variables, selection.selection #cuts_Tight
     hists_LnotTFake = self.gethists(*args_LnotTFake,weight=weight,dataweight=dataweight,replaceweight=replaceweight,tag=tag,
                                        task="Estimating jet-to-tau misIdentification", signal=False,split=False,blind=False,parallel=parallel,verbosity=verbosity-1)
+
+    args_LnotTGenuine  = variables, selection.selection.replace("!TauIsGenuine","TauIsGenuine") #cuts_Tight
+    hists_LnotTGenuine = self.gethists(*args_LnotTGenuine,weight=weight,dataweight=dataweight,replaceweight=replaceweight,tag=tag,
+                                       task="Estimating jet-to-tau misIdentification", signal=False,split=False,blind=False,parallel=parallel,verbosity=verbosity-1)
     
-    j_counter = 0;
-    for variable, datahist, exphists in hists_LnotTFake:
+    j_counter = 0
+    for variable, datahist, exphists in hists_LnotTGenuine:
       if not datahist:
         LOG.warning("SampleSet.MisIDtau :  No data to make DATA driven jet-to-tau misID!")
         return None
@@ -130,7 +132,10 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
         exphist.Add(hist)
       misIDhist = exphists[0].Clone(makehistname(variable.filename,name,tag)) # $VAR_$PROCESS$TAG
       misIDhist.Reset()
-      misIDhist.Add(datahist)
+      for variable_fake, datahist_fake, exphists_fake in hists_LnotTFake:
+        if variable_fake == variable:
+          misIDhist.Add(datahist_fake)
+      # misIDhist.Add(datahist)
       misIDhist.Add(exphist,-1)
       misIDhist.SetTitle(title)
       misIDhist.SetFillColor(ROOT.kOrange-2)#getcolor('QCD'))
@@ -152,14 +157,14 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
       ## So, at this point misIDhist has the LnotT Data minus the Genuine LnotT MC
       ## Now, you should just apply the tau FakeRates on the LnotT "fake" Data
       FRweight = FakeRate/(1.0-FakeRate) ## you want the LooseNotTight -> Tight weight.  FakeRate is the Loose->Tight one
-      #FRweight = FakeRate  ## just checks 
+      #FRweight = FakeRate  ## for Loose -> Tight
       misIDhist.Scale(FRweight) # scale LnotT -> Tight
       misIDhists[j_counter].Add(misIDhist)
       j_counter += 1
     
       # CLEAN
       deletehist([datahist,exphist]+exphists)
-  
+
   return misIDhists
 
 SampleSet.JetToTau_MisID = JetToTau_MisID # add as class method of SampleSet

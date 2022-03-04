@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # Author: Konstantinos Christoforou (Feb 2022)
 # Description: Simple script to read and plot jet-to-tau FakeRates
-# ./readAndPlotFR.py --yMin 0.0 --yMax 0.5 --saveDir plots/UL2018 --ratio --bandValue 30 --dirs plots/UL2018/TauFakeRate_UL2018_MuMuTau,plots/UL2018/TauFakeRate_UL2018_MuMuTau
+# ./readAndPlotFR.py --yMin 0.0 --yMax 0.5 --saveDir plots/UL2018/FakeRates --ratio --bandValue 30 --dirs plots/UL2018/TauFakeRate_UL2018_mumutau,plots/UL2018/TauFakeRate_UL2018_mumutau
 
 #import os
 import ROOT
@@ -295,7 +295,7 @@ def GetLabel(dirName):
     # FIXME with better code!
     if "Simulation" in dirName:
         finalState = "Simulation"
-    elif "MuMuTauData" in dirName:
+    elif "mumutauData" in dirName:
         finalState = "Data"
 
     # Data era
@@ -404,199 +404,6 @@ def main():
     #Print("Plots saved under directory %s"% (hs + aux.convertToURL(opts.saveDir, opts.url) + ns), True)
     return
 
-'''
-def _ifNotNone(value, default):
-    if value is None:
-        return default
-    return value
-
-def sortGraphList(gList):    
-     for i, g in enumerate(gList, 0):
-        if "<" in g.getName():
-            gList.insert(0, gList.pop(i))
-     return gList
-
-def doSummaryPlots(dirList, graphDict):
-
-    # For-loop: All json directories
-    for i, jsonDir in enumerate(dirList, 0):
-        gList  = []
-        rList  = []
-        #myKeys = sorted(graphDict.keys())
-        myKeys = graphDict.keys()
-
-        # For-loop: All 
-        for key in myKeys:
-            category = key.split("_")[0]
-            
-            # Skip 
-            if jsonDir not in key:
-                continue
-            else:
-                # print "jsonDir  = %s, category = %s" % (jsonDir, category)
-                pass
-
-            # Append graph to a OAlist
-            gList.append(graphDict[key])
-        PlotGraphList(i, gList, jsonDir, opts.name, prefix=None, postfix=None, ratio=False, _opts=opts)
-    return
-
-def PlotGraphList(index, graphs, jsonDir, saveName, prefix=None, postfix=None, ratio=False, _opts={}):
-    
-    legDict  = {}
-    styleGen = styles.Generator(styleList) 
-    if "fakesRegion" in jsonDir:
-        jsonDir = os.path.split(jsonDir)[0] # iro - quick-fix hack to fix recent additions
-    regAndYr = os.path.basename(jsonDir).split("_")[1]
-    saveName = saveName + "_" + regAndYr
-    if opts.year == None:
-        opts.year = re.sub("[^0-9]", "", regAndYr) # keep only year (remove all characters that are non-numbers)
-    if postfix != None:
-        saveName+= postfix
-        
-    # For-loop: All TGraphs
-    for i, g in enumerate(graphs, 1):
-        styleGen(g)
-        grName  = g.getName() 
-        legName = grName.split("-")[0].replace("_",  " ").replace("1p", "1-p").replace("3p", "3-p")
-
-        if not opts.boldText:
-            legDict[grName] = "#font[42]{%s}" % legName
-        else:
-            legDict[grName] = legName
-
-        isBarrel = "barrel" in grName.lower()
-
-        if "1prong" in grName.lower():
-            g.getRootHisto().SetMarkerColor(ROOT.kGreen-2)
-            g.getRootHisto().SetLineColor(ROOT.kGreen-2)
-            if isBarrel:
-                g.getRootHisto().SetMarkerStyle(ROOT.kFullCircle)
-            else:
-                g.getRootHisto().SetMarkerStyle(ROOT.kOpenCircle)
-        elif "3prong" in grName.lower():
-            g.getRootHisto().SetMarkerColor(ROOT.kAzure-2)
-            g.getRootHisto().SetLineColor(ROOT.kAzure-2)
-            if isBarrel:
-                g.getRootHisto().SetMarkerStyle(ROOT.kFullSquare)
-            else:
-                g.getRootHisto().SetMarkerStyle(ROOT.kOpenSquare)
-        else:
-            pass
-
-        if "_R" in grName:
-            g.getRootHisto().SetMarkerColor( colourList[i-1] )
-            g.getRootHisto().SetLineColor( colourList[i-1] )
-            #g.getRootHisto().SetMarkerStyle(ROOT.kFullCircle)
-            g.getRootHisto().SetMarkerStyle( markerList[i-1] )
-
-        # Finalise graph style
-        g.getRootHisto().SetFillColor(g.getRootHisto().GetMarkerColor())
-        g.getRootHisto().SetFillStyle(3002)
-        
-    # Create plot base object
-    if ratio:
-        plot = plots.PlotBase(graphs)
-    else:
-        plot = plots.ComparisonManyPlot(graphs[0], graphs[1:], saveFormats=[])
-
-    # Set luminosity
-    opts.intLumi = getLumiByYear(opts.year)
-    if opts.intLumi > 0.0:
-        plot.setLuminosity(opts.intLumi)
-
-    # Set legend labels
-    plot.histoMgr.setHistoLegendLabelMany(legDict)
-
-    # https://root.cern.ch/doc/master/classTGraphPainter.html
-    plot.histoMgr.setHistoDrawStyleAll("XP")
-    plot.histoMgr.setHistoLegendStyleAll("P")
-
-    # Create & set legend
-    legend = getLegend()
-    plot.setLegend(legend)
-    plot.setLegendHeader("%s %s" % (opts.year, opts.dataType) )#plot.setLegendHeader(GetLabel(jsonDir))
-    moveLegend(legend, "NW", len(graphs))
-
-    # Determine options
-    ymin = 0.0
-    ymax = 1.0
-    opts1 = {"xmin": _opts.xMin, "xmax": _opts.xMax, "ymin": _opts.yMin, "ymax": _opts.yMax}
-    if _opts.yMin == -1:
-        _opts.yMin = ymin
-    if opts.yMax == -1:
-        _opts.yMax = ymax
-
-    if opts.xMin == None:
-        del opts1["xmin"]
-    if opts.xMax == None:
-        del opts1["xmax"]
-
-    # Create the frame and set axes titles
-    plot.createFrame(saveName + "_%d" % (index), createRatio=ratio, opts=opts1, opts2={"ymin": 0.8, "ymax": 1.4})
-
-    # Add cut lines?
-    for x in opts.cutLinesX:
-        kwargs = {"greaterThan": True}
-        plot.addCutBoxAndLine(cutValue=int(x), fillColor=ROOT.kRed, box=False, line=True, **kwargs)
-
-    for y in opts.cutLinesY:
-        kwargs = {"greaterThan": True, "mainCanvas": True, "ratioCanvas": False}
-        plot.addCutBoxAndLineY(cutValue=int(y), fillColor=ROOT.kRed, box=False, line=True, **kwargs)
-
-    if opts.bandValue != 0 and opts.ratio==True:
-        # https://root.cern.ch/doc/master/classTAttFill.html
-        kwargs = {"cutValue": 1.0 + float(opts.bandValue)/100.0, "fillColor": ROOT.kGray, "fillStyle": 3003, "box": False, "line": True, "greaterThan": True, "mainCanvas": False, "ratioCanvas": opts.ratio, "mirror": True}
-        plot.addCutBoxAndLineY(**kwargs)
-
-    # Set axes titles
-    plot.frame.GetXaxis().SetTitle("#tau_{h} p_{T} (GeV)")
-    plot.frame.GetYaxis().SetTitle("fake factors (j #rightarrow #tau_{h})")
-
-    # Enable/Disable logscale for axes 
-    ROOT.gPad.SetLogy(_opts.logY)
-    ROOT.gPad.SetLogx(_opts.logX)
-    ROOT.gPad.SetGridy(_opts.gridY) #fixme ratio pad does not get the grid lines
-    ROOT.gPad.SetGridx(_opts.gridX)
-
-    # Draw the plot with standard texts
-    plot.draw()
-    plot.addStandardTexts(addLuminosityText=(opts.intLumi > 0.0))
-
-    # Additional text?    
-    if 0:
-        histograms.addText(0.20, 0.86, opts.dataType, size=22, bold=opts.boldText)
-
-    # Save the plots & return
-    if prefix != None:
-        saveDir = os.path.join(_opts.saveDir, prefix)
-    else:
-        saveDir = _opts.saveDir
-    SavePlot(plot, saveDir, saveName, opts.saveFormats)
-    return graphs
-
-
-def moveLegend(legend, position, nPlots):
-    if position not in ["default", "NE", "NW", "SE", "SW"]:
-        msg = "Invalid legend position \"%s\"" % (position)
-        raise Exception(es + msg + ns)
-    corr = (0.035*(nPlots-2))
-    legDict  = {}
-
-    #legDict["NE"]  = {"dx": -0.13, "dy": -0.01, "dh": -0.13 + corr}
-    legDict["NE"]  = {"dx": -0.04, "dy": -0.01, "dh": -0.11 + corr}
-    legDict["NW"]  = {"dx": -0.48, "dy": -0.01, "dh": -0.11 + corr}
-    legDict["SE"]  = {"dx": -0.13, "dy": -0.60 + corr, "dh": -0.11 + corr}
-    legDict["SW"]  = {"dx": -0.48, "dy": -0.60 + corr, "dh": -0.11 + corr}
-    dx = legDict[position]["dx"]
-    dy = legDict[position]["dy"]
-    dw = 0.0
-    dh = legDict[position]["dh"]
-
-    histograms.moveLegend(legend, dx, dy, dw, dh)
-    return
-
-'''
 if __name__ == "__main__":
 
     # Default options

@@ -3,7 +3,7 @@
 # Description: Simple plotting script for pico analysis tuples
 # ./plotJetToTauFRvariables_writeJson.py -c mumutau --era UL2018
 #from config.samples import *
-from config.samples_JetToTauFR import *
+from config.samples_forJetToTauFR import *
 from TauFW.Plotter.plot.string import filtervars
 from TauFW.Plotter.plot.utils import LOG as PLOG
 import TauFW.Plotter.tools.jsonWriter as jsonWriter 
@@ -14,9 +14,6 @@ import math
 import ctypes 
 import array
 
-
-
-
 def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era="",
          varfilter=None,selfilter=None,fraction=False,pdf=False,verbose=0):
   """Test plotting of SampleSet class for data/MC comparison."""
@@ -24,28 +21,13 @@ def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era=
   
   # SELECTIONS
   if 'mumutau' in channel:
-    #baseline = 'pt_mu0 > 10.0'
-    #baseline = 'id_mu0 && id_mu1 && iso_mu0 < 0.15 && iso_mu1< 0.15 && id_tau >= 1 && iso_tau<0.15 && metfilter'
-    baseline = 'id_mu0 && id_mu1 && iso_mu0 < 0.15 && iso_mu1< 0.15 && id_tau >= 1 && iso_tau<0.15 && metfilter && IsOnZ && BJetN>=1'
-    #baseline = 'id_mu0 && id_mu1 && iso_mu0 < 0.15 && iso_mu1< 0.15 && id_tau >= 1 && iso_tau<0.15 && metfilter && !IsOnZ && BJetN>=1'
-  elif 'mumu' in channel:
-    baseline = "q_1*q_2<0 && pt_2>15 && iso_1<0.15 && iso_2<0.15 && idMedium_1 && idMedium_2 && !extraelec_veto && !extramuon_veto && metfilter && m_ll>20"
-  elif 'mutau' in channel:
-    baseline = "q_1*q_2<0 && iso_1<0.15 && idDecayModeNewDMs_2 && idDeepTau2017v2p1VSjet_2>=16 && idDeepTau2017v2p1VSe_2>=2 && idDeepTau2017v2p1VSmu_2>=8 && !lepton_vetoes_notau && metfilter"
-  elif 'etau' in channel:
-    baseline = "q_1*q_2<0 && iso_1<0.10 && mvaFall17noIso_WP90_1 && idDecayModeNewDMs_2 && idDeepTau2017v2p1VSjet_2>=16 && idDeepTau2017v2p1VSe_2>=8 && idDeepTau2017v2p1VSmu_2>=1 && !lepton_vetoes_notau && metfilter"
-  elif 'tautau' in channel:
-    baseline = "q_1*q_2<0 && iso_1<0.15 && iso_2<0.15 && idMedium_1 && idMedium_2 && !extraelec_veto && !extramuon_veto && m_ll>20 && metfilter"
+    baseline = 'id_mu0 && id_mu1 && iso_mu0 < 0.15 && iso_mu1< 0.15 && (q_mu0*q_mu1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && JetN >= 2 && IsOnZ && BJetN==0'
+    #baseline = 'id_mu0 && id_mu1 && iso_mu0 < 0.15 && iso_mu1< 0.15 && (q_mu0*q_mu1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && JetN >= 2 && IsOnZ'
   else:
     raise IOError("No baseline selection for channel %r defined!"%(channel))
-  zttregion = "%s && mt_1<60 && dzeta>-25 && abs(deta_ll)<1.5"%(baseline) # && nbtag==0
+
   selections = [
-    #Sel('baseline, no DeepTauVSjet',baseline.replace(" && idDeepTau2017v2p1VSjet_2>=16",""),only=["DeepTau"]),
     Sel("baseline",baseline),
-    #Sel("baseline, pt > 50 GeV",baseline+" && pt_1>50"),
-    #Sel("mt<60 GeV, dzeta>-25 GeV, |deta|<1.5",zttregion,fname="zttregion"),
-    #Sel("0b",baseline+" && nbtag==0",weight="btagweight"),
-    #Sel(">=1b",baseline+" && nbtag>=1",weight="btagweight"),
   ]
   
   #### DIFFERENTIAL pt/DM bins for TauID measurement
@@ -59,47 +41,6 @@ def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era=
     (LooseTauWPGenuine,'id_tau >= 1 && TauIsGenuine'),
     (TightTauWPGenuine,'id_tau >= 16 && TauIsGenuine'),
   ]
-
-  ## KC KEEP THIS PART, LET'S TRY DM-ETA BINNING AND HISTOS BE PT ON X AXIS
-  #kc checks
-  #pts = [20,25,30,40,50,80,120]
-  #pts = [20,30,80,120]
-  #maxPt = 100
-  #pts = [20,60]
-  #etas = ["barrel","endcap"]
-  #prongs = [1,3]
-  # 
-  #for wp, wpcut in wps:
-  #  basecut = baseline.replace("id_tau >= 1",wpcut ) #+" && nbtag==0"
-  #  #print basecut
-  #  for i, ptlow in enumerate(pts):
-  #    if i<len(pts)-1: # ptlow < pt < ptup
-  #      ptup = pts[i+1]
-  #      name = "%s_pt%d-%d"%(wp,ptlow,ptup)
-  #      tit  = "%s, %d < pt < %d GeV"%(wp,ptlow,ptup)
-  #      cut  = "%s && %s<TauPt && TauPt<%s"%(basecut,ptlow,ptup)
-  #    else: # pt > ptlow (no upper pt cut)
-  #      name = "%s_pt%d-pt%s"%(wp,ptlow,maxPt)
-  #      tit  = "%s, %d < pt < %d GeV"%(wp,ptlow,maxPt)
-  #      cut  = "%s && %s<TauPt && TauPt<%s"%(basecut,ptlow,maxPt)
-  #    #selections.append(Sel(name,tit,cut,only=['m_vis','^m_2','mapRecoDM'])) # pt bins
-  #    for prong in prongs:
-  #      name_ = "%s_prongs%s"%(name,prong)
-  #      tit_  = "%s, prongs%s"%(tit,prong)
-  #      if prong == 1:
-  #        cut_  = "%s && TauDM<5"%(cut)
-  #      else: ## prong == 3
-  #        cut_  = "%s && TauDM>5"%(cut)
-  #      #selections.append(Sel(name_,tit_,cut_,only=['TauPt'])) # pt-DM bins
-  #      ###############################  
-  #      for eta in etas:
-  #        name__ = "%s_eta%s"%(name_,eta)
-  #        tit__  = "%s, eta%s"%(tit_,eta)
-  #        if eta =="barrel":
-  #          cut__ = "%s && TauEta<1.5"%(cut_)
-  #        else: # eta =="endcap":
-  #          cut__ = "%s && TauEta<2.4"%(cut_)
-  #        selections.append(Sel(name__,tit__,cut__,only=['TauPt'])) # pt-DM bins
 
   #pts = [20,25,30,40,50,80,120]
   #pts = [20,30,80,120]
@@ -136,20 +77,19 @@ def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era=
           name__ = "%s_eta%s"%(name_,eta)
           tit__  = "%s, eta%s"%(tit_,eta)
           if eta =="Barrel":
-            cut__ = "%s && TauEta<1.5"%(cut_)
+            cut__ = "%s && abs(TauEta)<1.5"%(cut_)
           else: # eta =="Endcap":
-            cut__ = "%s && TauEta<2.4"%(cut_)
+            cut__ = "%s && abs(TauEta)>1.5 && abs(TauEta)<2.4"%(cut_)
           selections.append(Sel(name__,tit__,cut__,only=['TauPt'])) # pt-DM bins
   
   # VARIABLES
   variables = [
-    #kc checks, Var('TauPt'            , 'Tau pt'             , 60,  0   ,  300 ),
-    #Var('TauPt'            , 'Tau pt'             , 120, 0.0 ,  120.0),
     Var('TauPt'            , 'Tau pt'             , 120, 20.0 ,  120.0),
     #Var('TauPt'            , 'Tau pt'             , [0, 20, 25 , 30 , 40 , 50 , 80, 120]),
     Var('TauEta'           , 'Tau eta'            , 25, -2.5 ,   2.5),
     Var('TauDM'            , 'Tau DM'             , 12,  0   ,   12 ),
   ]
+
   ## TauDM already 0,1,10 or 11 so if DM<5 -> 1 prong, if DM>5 -> 3 prong
   #hists_30_barrel_1prong = sample.gethist(variables,"TauPt<30 && TauEta<1.5 && TauDM<5") 
   
@@ -166,20 +106,12 @@ def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era=
   TightMCGenuineHists = []
   for selection in selections:
     #print ">>> Selection %r: %r"%(selection.title,selection.selection)
-    #kc
-    stacks = sampleset.getstack(variables,selection,method='QCD_OSSS',parallel=parallel)
-    #stacks = sampleset.getstack(variables,selection,method='',parallel=parallel)
+    stacks = sampleset.getstack(variables,selection,method='',parallel=parallel)
     fname  = "%s/$VAR_%s-%s-%s$TAG"%(outdir,channel.replace('mu','m').replace('tau','t'),selection.filename,era)
     text   = "%s: %s"%(channel.replace('mu',"#mu").replace('tau',"#tau_{h}"),selection.title)
     if extratext:
       text += ("" if '\n' in extratext[:3] else ", ") + extratext
     for stack, variable in stacks.iteritems():
-      #hist = stack.gethist(variable)
-      #position = "" #variable.position or 'topright'
-      ## try this
-      #self.exphists = [h.Clone(h.GetName()+"_clone_Stack") for h in self.exphists]
-      #sighists, exphists, h.Clone(h.GetName()+"_clone_Stack"
-      #print fname
       for h in stack.hists:
         if "prongs" not in selection.filename : continue
         if ("SingleMuon" not in h.GetName() and "Simulation" not in h.GetName()): continue 
@@ -445,6 +377,8 @@ def GetEfficiencyHisto(numHisto, denHisto, dsetType, outdir, era, channel, ptLis
   #  jsonFileInfoDict[dictKey + "-" + dsetType] = jsonList
   
 def WriteJsonInfoToFile(jsonFileInfoDict,outdir,era,channel,verbose):
+  outdirForJSON = "TauFakeRate_%s_%s" % (era, channel)
+  outdir += "/" + outdirForJSON
   jsonWr = jsonWriter.JsonWriter(outdir, verbose)
 
 
@@ -465,8 +399,8 @@ def WriteJsonInfoToFile(jsonFileInfoDict,outdir,era,channel,verbose):
     usedKeys.append(usedKey)
 
   # Write the file
-  jsonFileName = "TauFakeRate_%s_%s" % (era, channel)
-  jsonFileName += ".json"
+  #jsonFileName = "TauFakeRate_%s_%s" % (era, channel)
+  jsonFileName = outdirForJSON + ".json"
   jsonWr.write(jsonFileName)
   jsonFilePath = outdir+jsonFileName
   return
@@ -581,9 +515,13 @@ def main(args):
     for channel in channels:
       setera(era) # set era for plot style and lumi-xsec normalization
       addsfs = [ ] #"getTauIDSF(dm_2,genmatch_2)"]
-      rmsfs  = [ ] if (channel=='mumu' or not notauidsf) else ['idweight_2','ltfweight_2'] # remove tau ID SFs
+      ## kc 23Feb22######
+      rmsfs  = [ ]
+      #rmsfs  = [ ] if (channel=='mumu' or not notauidsf) else ['idweight_2','ltfweight_2'] # remove tau ID SFs
+      ###################
       split  = ['DY'] if 'tau' in channel else [ ] # split these backgrounds into tau components
-      sampleset = getsampleset(channel,era,fname=fname,rmsf=rmsfs,addsf=addsfs,split=split) #,dyweight="")
+      mergeMC = True
+      sampleset = getsampleset(channel,era,fname=fname,rmsf=rmsfs,addsf=addsfs,split=split,mergeMC=mergeMC) #,dyweight="")
       plot(sampleset,channel,parallel=parallel,tag=tag,extratext=extratext,outdir=outdir,era=era,
            varfilter=varfilter,selfilter=selfilter,fraction=fraction,pdf=pdf,verbose=verbose)
       sampleset.close()
