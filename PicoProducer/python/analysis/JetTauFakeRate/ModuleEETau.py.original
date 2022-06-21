@@ -1,5 +1,5 @@
 # Author: Konstantinos Christoforou (Jan 2022)
-# Description: Simple module to pre-select mumutau events
+# Description: Simple module to pre-select eetau events
 
 import sys
 import numpy as np
@@ -11,14 +11,14 @@ from TauPOG.TauIDSFs.TauIDSFTool import TauIDSFTool, TauESTool, campaigns
 
 from TauFW.PicoProducer import datadir
 from TauFW.PicoProducer.corrections.BTagTool import BTagWeightTool, BTagWPs
-from TauFW.PicoProducer.corrections.MuonSFs import *
+from TauFW.PicoProducer.corrections.ElectronSFs import *
 from TauFW.PicoProducer.corrections.RecoilCorrectionTool import *
 from TauFW.PicoProducer.corrections.PileupTool import *
 from TauFW.PicoProducer.corrections.TrigObjMatcher import TrigObjMatcher
 from TauFW.PicoProducer.analysis.utils import deltaPhi, getmetfilters
 from TauPOG.TauIDSFs.TauIDSFTool import TauIDSFTool, TauESTool, campaigns
 
-class ModuleMuMuTau(Module):
+class ModuleEETau(Module):
   
   def __init__(self,fname,**kwargs):
     self.outfile = TFile(fname,'RECREATE')
@@ -35,28 +35,29 @@ class ModuleMuMuTau(Module):
     tauSFVersion  = { 2016: '2016Legacy', 2017: '2017ReReco', 2018: '2018ReReco' }
     if "2016" in self.era : 
       self.yearForTauSF = 2016
-      self.muonTrgPt = 25.0
+      self.elecTrgPt = 28.0
     elif "2017" in self.era : 
       self.yearForTauSF = 2017
-      self.muonTrgPt = 28.0
+      self.elecTrgPt = 33.0
     elif "2018" in self.era :
       self.yearForTauSF = 2018
-      self.muonTrgPt = 25.0
+      self.elecTrgPt = 33.0
     else :
       "Sanity check error, no 2016/2017/2018 in self.era"
-    
+
     ## For Trigger Matching
-    jsonfile       = os.path.join(datadir,"trigger/tau_triggers_%d.json"%(self.yearForTauSF))
+    jsonfile         = os.path.join(datadir,"trigger/tau_triggers_%d.json"%(self.yearForTauSF))
     jsonfileCorrected = jsonfile.replace("/pileup","") ## for some reason the pileup subfolder is selected as datadir, instead of the just the data folder, fixme
-    self.trigger   = TrigObjMatcher(jsonfileCorrected,trigger='SingleMuon',isdata=self.isdata)
-    
+    self.trigger   = TrigObjMatcher(jsonfileCorrected,trigger='SingleElectron',isdata=self.isdata)
+
     ## CORRECTIONS
     self.metfilt      = getmetfilters(self.era,self.isdata,verb=self.verbosity)
     if self.ismc:
       self.puTool     = PileupWeightTool(era=self.era,sample=fname,verb=self.verbosity)
       if self.dozpt:
         self.zptTool  = ZptCorrectionTool(era=self.era)
-      self.muSFs      = MuonSFs(era=self.era,verb=self.verbosity) # muon id/iso/trigger SFs
+      self.eleSFs     = ElectronSFs(era=self.era) # electron id/iso/trigger SFs
+
       self.tesTool    = TauESTool(tauSFVersion[self.yearForTauSF])  # real tau energy scale corrections
       self.tauSFsT_dm = TauIDSFTool(tauSFVersion[self.yearForTauSF],'DeepTau2017v2p1VSjet','Tight', dm=True)
       self.tauSFsT    = TauIDSFTool(tauSFVersion[self.yearForTauSF],'DeepTau2017v2p1VSjet','Tight')
@@ -68,41 +69,41 @@ class ModuleMuMuTau(Module):
     ## your output file in order to store your trees/branches
     self.outfile.cd()
 
-    self.jetCutPt   = 30.0
+    self.jetCutPt   = 30
     self.bjetCutEta = 2.4 if self.era==2016 else 2.5
     self.deepjet_wp = BTagWPs('DeepJet',era=self.era)
-
+    
   def beginJob(self):
     """Prepare output analysis tree and cutflow histogram."""
     
     # CUTFLOW HISTOGRAM
     self.cutflow  = TH1D('cutflow','cutflow',25,0,25)
-    self.cut_none = 0
-    self.cut_trig = 1
-    self.cut_muon = 2
-    self.cut_tau  = 3
-    self.cut_pair = 4
+    self.cut_none     = 0
+    self.cut_trig     = 1
+    self.cut_electron = 2
+    self.cut_tau      = 3
+    self.cut_pair     = 4
     self.cut_weight = 16 ## needed for sumbinw
-    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_none, "no cut"  )
-    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_trig, "trigger" )
-    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_muon, "muon"    )
-    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_tau,  "tau"     )
-    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_pair, "pair"    )
+    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_none,     "no cut"      )
+    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_trig,     "trigger"     )
+    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_electron, "electron"    )
+    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_tau,      "tau"         )
+    self.cutflow.GetXaxis().SetBinLabel(1+self.cut_pair,     "pair"        )
     self.cutflow.GetXaxis().SetBinLabel(1+self.cut_weight, "no cut, weighted" )
 
     # TREE
     self.tree   = TTree('tree','tree')
     self.evt           = np.zeros(1,dtype='i')
     self.lumi          = np.zeros(1,dtype='i')
-    self.npu           = np.zeros(1,dtype='i')  
-    self.npu_true      = np.zeros(1,dtype='i')  
-    self.NUP           = np.zeros(1,dtype='i')  
+    self.npu           = np.zeros(1,dtype='i')
+    self.npu_true      = np.zeros(1,dtype='i')
+    self.NUP           = np.zeros(1,dtype='i')
     self.metfilter     = np.zeros(1,dtype='?')
     self.genweight     = np.zeros(1,dtype='f')
     self.puweight      = np.zeros(1,dtype='f')
     self.zptweight     = np.zeros(1,dtype='f')
     self.m_moth        = np.zeros(1,dtype='f')
-    self.pt_moth       = np.zeros(1,dtype='f') 
+    self.pt_moth       = np.zeros(1,dtype='f')
     self.ttptweight    = np.zeros(1,dtype='f')
     self.pt_moth1      = np.zeros(1,dtype='f')
     self.pt_moth2      = np.zeros(1,dtype='f')
@@ -115,16 +116,16 @@ class ModuleMuMuTau(Module):
     self.idweightVVVL_tau = np.zeros(1,dtype='f')
     self.ltfweight_tau    = np.zeros(1,dtype='f')
     self.ltfweight_tau    = np.zeros(1,dtype='f')
-    self.pt_mu0   = np.zeros(1,dtype='f')
-    self.eta_mu0  = np.zeros(1,dtype='f')
-    self.q_mu0    = np.zeros(1,dtype='i')
-    self.id_mu0   = np.zeros(1,dtype='?')
-    self.iso_mu0  = np.zeros(1,dtype='f')
-    self.pt_mu1   = np.zeros(1,dtype='f')
-    self.eta_mu1  = np.zeros(1,dtype='f')
-    self.q_mu1    = np.zeros(1,dtype='i')
-    self.id_mu1   = np.zeros(1,dtype='?')
-    self.iso_mu1  = np.zeros(1,dtype='f')
+    self.pt_e0   = np.zeros(1,dtype='f')
+    self.eta_e0  = np.zeros(1,dtype='f')
+    self.q_e0    = np.zeros(1,dtype='i')
+    self.id_e0   = np.zeros(1,dtype='i')
+    self.iso_e0  = np.zeros(1,dtype='f')
+    self.pt_e1   = np.zeros(1,dtype='f')
+    self.eta_e1  = np.zeros(1,dtype='f')
+    self.q_e1    = np.zeros(1,dtype='i')
+    self.id_e1   = np.zeros(1,dtype='i')
+    self.iso_e1  = np.zeros(1,dtype='f')
     self.pt_tau   = np.zeros(1,dtype='f')
     self.eta_tau  = np.zeros(1,dtype='f')
     self.q_tau    = np.zeros(1,dtype='i')
@@ -155,15 +156,15 @@ class ModuleMuMuTau(Module):
     self.tree.Branch('npu',          self.npu,           'npu/I'          )## number of in-time pu interactions added (getPU_NumInteractions -> nPU)
     self.tree.Branch('npu_true',     self.npu_true,      'npu_true/I'     )## true mean number of Poisson distribution (getTrueNumInteractions -> nTrueInt)
     self.tree.Branch('NUP',          self.NUP,           'NUP/I'          )## number of partons for stitching (LHE_Njets)
-    self.tree.Branch('metfilter',    self.metfilter,     'metfilter/O'    )   
+    self.tree.Branch('metfilter',    self.metfilter,     'metfilter/O'    )
     self.tree.Branch('genweight',    self.genweight,     'genweight/F'    )          
     self.tree.Branch('puweight',     self.puweight,      'puweight/F'     )          
-    self.tree.Branch('zptweight',    self.zptweight,     'zptweight/F'    ) 
+    self.tree.Branch('zptweight',    self.zptweight,     'zptweight/F'    )
     self.tree.Branch('m_moth',       self.m_moth,        'm_moth/F'       )
-    self.tree.Branch('pt_moth',      self.pt_moth,       'pt_moth/F'      )      
+    self.tree.Branch('pt_moth',      self.pt_moth,       'pt_moth/F'      )
     self.tree.Branch('ttptweight',   self.ttptweight,    'ttptweight/F'   )
-    self.tree.Branch('pt_moth1',     self.pt_moth1,      'pt_moth1/F'     )       
-    self.tree.Branch('pt_moth2',     self.pt_moth2,      'pt_moth2/F'     )           
+    self.tree.Branch('pt_moth1',     self.pt_moth1,      'pt_moth1/F'     )
+    self.tree.Branch('pt_moth2',     self.pt_moth2,      'pt_moth2/F'     )
     self.tree.Branch('trigweight',   self.trigweight,    'trigweight/F'   )
     self.tree.Branch('idisoweight_1',self.idisoweight_1, 'idisoweight_1/F')
     self.tree.Branch('idisoweight_2',self.idisoweight_2, 'idisoweight_2/F')
@@ -173,16 +174,16 @@ class ModuleMuMuTau(Module):
     self.tree.Branch('idweightVVVL_tau', self.idweightVVVL_tau, 'idweightVVVL_tau/F' )
     self.tree.Branch('ltfweight_tau',    self.ltfweight_tau,    'ltfweight_tau/F'    )
     self.tree.Branch('ltfweight_tau',    self.ltfweight_tau,    'ltfweight_tau/F'    )
-    self.tree.Branch('pt_mu0',   self.pt_mu0,  'pt_mu0/F' )
-    self.tree.Branch('eta_mu0',  self.eta_mu0, 'eta_mu0/F')
-    self.tree.Branch('q_mu0',    self.q_mu0,   'q_mu0/I'  )
-    self.tree.Branch('id_mu0',   self.id_mu0,  'id_mu0/O' )
-    self.tree.Branch('iso_mu0',  self.iso_mu0, 'iso_mu0/F')
-    self.tree.Branch('pt_mu1',   self.pt_mu1,  'pt_mu1/F' )
-    self.tree.Branch('eta_mu1',  self.eta_mu1, 'eta_mu1/F')
-    self.tree.Branch('q_mu1',    self.q_mu1,   'q_mu1/I'  )
-    self.tree.Branch('id_mu1',   self.id_mu1,  'id_mu1/O' )
-    self.tree.Branch('iso_mu1',  self.iso_mu1, 'iso_mu1/F')
+    self.tree.Branch('pt_e0',   self.pt_e0,  'pt_e0/F' )
+    self.tree.Branch('eta_e0',  self.eta_e0, 'eta_e0/F')
+    self.tree.Branch('q_e0',    self.q_e0,   'q_e0/I'  )
+    self.tree.Branch('id_e0',   self.id_e0,  'id_e0/I' )
+    self.tree.Branch('iso_e0',  self.iso_e0, 'iso_e0/F')
+    self.tree.Branch('pt_e1',   self.pt_e1,  'pt_e1/F' )
+    self.tree.Branch('eta_e1',  self.eta_e1, 'eta_e1/F')
+    self.tree.Branch('q_e1',    self.q_e1,   'q_e1/I'  )
+    self.tree.Branch('id_e1',   self.id_e1,  'id_e1/I' )
+    self.tree.Branch('iso_e1',  self.iso_e1, 'iso_e1/F')
     self.tree.Branch('pt_tau',   self.pt_tau,  'pt_tau/F' )
     self.tree.Branch('eta_tau',  self.eta_tau, 'eta_tau/F')
     self.tree.Branch('q_tau',    self.q_tau,   'q_tau/I'  )
@@ -196,10 +197,10 @@ class ModuleMuMuTau(Module):
     self.tree.Branch("TauDM"           ,  self.TauDM           , "TauDM/I"            ) 
     self.tree.Branch("JetN"            ,  self.JetN            , "JetN/I"             ) 
     self.tree.Branch("BJetN"           ,  self.BJetN           , "BJetN/I"            ) 
-    self.tree.Branch("MET"             ,  self.MET             , "MET/F"              ) 
-    self.tree.Branch("HT"              ,  self.HT              , "HT/F"               ) 
-    self.tree.Branch("LT"              ,  self.LT              , "LT/F"               ) 
-    self.tree.Branch("ST"              ,  self.ST              , "ST/F"               ) 
+    self.tree.Branch("MET"             ,  self.MET             , "MET/F"              )
+    self.tree.Branch("HT"              ,  self.HT              , "HT/F"               )
+    self.tree.Branch("LT"              ,  self.LT              , "LT/F"               )
+    self.tree.Branch("ST"              ,  self.ST              , "ST/F"               )
     self.tree.Branch("LeptonOnePt"     ,  self.LeptonOnePt     , "LeptonOnePt/F"      ) 
     self.tree.Branch("LeptonTwoPt"     ,  self.LeptonTwoPt     , "LeptonTwoPt/F"      ) 
     self.tree.Branch("DileptonPt"      ,  self.DileptonPt      , "DileptonPt/F"       ) 
@@ -216,7 +217,7 @@ class ModuleMuMuTau(Module):
   
   def analyze(self, event):
     """Process event, return True (pass, go to next module) or False (fail, go to next event)."""
-    
+
     self.evt[0]             = event.event & 0xffffffffffffffff 
     # NO CUT
     self.cutflow.Fill(self.cut_none)
@@ -229,36 +230,43 @@ class ModuleMuMuTau(Module):
     
     # TRIGGER
     if self.era=="2016" or self.era=="UL2016":
-      if not (event.HLT_IsoMu24 and event.HLT_IsoTkMu24) : return False
+      if not (event.HLT_Ele27_WPTight_Gsf) : return False
     elif self.era=="2017" or self.era=="UL2017":
-      if not (event.HLT_IsoMu24 and event.HLT_IsoMu27) : return False
+      # extracting ele32 trigger from ele32_l1doubleEG######################################################
+      if not (event.HLT_Ele32_WPTight_Gsf_L1DoubleEG) : return False 
+      HLT_Ele32_fired = False
+      position_in_filterBits = 10 # position of 32_L1DoubleEG_AND_L1SingleEGOr in TrigObj_filterBits
+      for trgObj in Collection(event,'TrigObj'):
+        if ( is_nth_bit_set(self,trgObj.filterBits,position_in_filterBits) ) : HLT_Ele32_fired = True #32_L1DoubleEG_AND_L1SingleEGOr filter to extract ele32 from ele35
+        # print "trgObj.filterBits = " , trgObj.filterBits
+        # print( is_nth_bit_set(self,trgObj.filterBits,10) )      
+      if not HLT_Ele32_fired : return False
+      #######################################################################################################
     elif self.era=="2018" or self.era=="UL2018":
-      if not event.HLT_IsoMu24 : return False
+      if not event.HLT_Ele32_WPTight_Gsf : return False
     self.cutflow.Fill(self.cut_trig)
     
-
-    
-    # SELECT MUONS
-    muons = [ ]
-    for muon in Collection(event,'Muon'):
-      if muon.pt<10: continue
-      if abs(muon.eta)>2.4: continue
-      if abs(muon.dz)>0.2: continue
-      if abs(muon.dxy)>0.045: continue
-
-      if not muon.tightId: continue
-      if muon.pfRelIso04_all>0.50: continue
-      muons.append(muon)
-    if len(muons)!=2: return False
+    # SELECT ELECTRONS
+    electrons = [ ]
+    for electron in Collection(event,'Electron'):
+      if electron.pt<10: continue
+      if abs(electron.eta)>2.1: continue
+      if abs(electron.dz)>0.2: continue
+      if abs(electron.dxy)>0.045: continue
+      if electron.lostHits>1: continue
+      if not (electron.mvaFall17V2Iso_WP90) : continue
+      if electron.pfRelIso03_all > 0.50: continue
+      electrons.append(electron)
+    if len(electrons)!=2: return False
     # apply trigger matching#######
     MatchedTrigger = False
-    for selmuon in muons:
-      # if not self.trigger.match(event,muon): continue ## fixme
-      if selmuon.pt<self.muonTrgPt : continue
+    for selelec in electrons:
+      # if not self.trigger.match(event,electron): continue ## fixme
+      if selelec.pt<self.elecTrgPt : continue
       MatchedTrigger = True
     if not MatchedTrigger : return False
     ################################
-    self.cutflow.Fill(self.cut_muon)
+    self.cutflow.Fill(self.cut_electron)
     
     # SELECT TAU
     taus = [ ]
@@ -276,53 +284,55 @@ class ModuleMuMuTau(Module):
     self.cutflow.Fill(self.cut_tau)
 
     # Leptons
-    muon0 = muons[0]
-    muon1 = muons[1]
-    tau   = max(taus,key=lambda p: p.pt)
+    electron0 = electrons[0]
+    electron1 = electrons[1]
+    tau       = max(taus,key=lambda p: p.pt)
 
     # Leptons dR
     #muon = max(muons,key=lambda p: p.pt)
-    if muon0.DeltaR(muon1)<0.4: return False
-    if muon0.DeltaR(tau)<0.4: return False
-    if muon1.DeltaR(tau)<0.4: return False
+    if electron0.DeltaR(electron1)<0.4: return False
+    if electron0.DeltaR(tau)<0.4: return False
+    if electron1.DeltaR(tau)<0.4: return False
     self.cutflow.Fill(self.cut_pair)
     
-    # VETO for extraMuons
-    extramuon_veto = False
-    looseMuons = [ ]    
-    for muon in Collection(event,'Muon'):
-      if muon.pt>10: continue
-      if abs(muon.eta)>2.4: continue
-      if abs(muon.dz)>0.2: continue
-      if abs(muon.dxy)>0.045: continue
-      if muon.pfRelIso04_all>0.3: continue
-      if any(muon.DeltaR(tau)<0.4 for tau in taus): continue
-      if muon.looseId and all(m._index!=muon._index for m in muons):
-        looseMuons.append(muon)
-        extramuon_veto = True
-
-        
-    if extramuon_veto : return False
-    
-    # VETO ELECTRONS
-    elec_veto = False
-    Electrons = []
+    # VETO for extraElectrons
+    extraelectron_veto = False
+    looseElectrons = [ ]    
     for electron in Collection(event,'Electron'):
-      if electron.pt>10: continue
-      if abs(electron.eta)>2.5: continue
+      if electron.pt<10: continue
+      if abs(electron.eta)>2.4: continue
       if abs(electron.dz)>0.2: continue
       if abs(electron.dxy)>0.045: continue
+      if electron.lostHits>1: continue
       if electron.pfRelIso03_all>0.3: continue
       if any(electron.DeltaR(tau)<0.4 for tau in taus): continue
-      if any(electron.DeltaR(muon)<0.3 for muon in muons): continue ## remove overlap with selected muons as well !?! dR<0.3 optimal???
-      if electron.convVeto==1 and electron.lostHits<=1 and electron.mvaFall17V2noIso_WPL:
-        Electrons.append(electron)
-        elec_veto = True
-
-    if elec_veto : return False
+      if electron.mvaFall17V2noIso_WPL and all(e._index!=electron._index for e in electrons):
+        looseElectrons.append(electron)
+        extraelectron_veto = True
+        
+    if extraelectron_veto : return False
     
+    # VETO MUONS
+    muon_veto = False
+    Muons = [ ]
+    for muon in Collection(event,'Muon'):
+      if muon.pt>10: continue
+      if abs(muon.eta)>2.5: continue
+      if abs(muon.dz)>0.2: continue
+      if abs(muon.dxy)>0.045: continue
+      if muon.pfRelIso03_all>0.3: continue
+      if any(muon.DeltaR(tau)<0.4 for tau in taus): continue
+      if any(muon.DeltaR(muon)<0.3 for electron in electrons): continue ## remove overlap with selected muons as well !?! dR<0.3 optimal???
+      if muon.convVeto==1 and muon.lostHits<=1 and muon.mvaFall17V2noIso_WPL:
+        Muons.append(muon)
+        muon_veto = True
+
+        
+    if muon_veto : return False
+    
+
     # SELECT JETS
-    jets, bjets = fillJetBranches(self,event,tau,muons)
+    jets, bjets = fillJetBranches(self,event,tau,electrons)
     is0b = False
     if(len(bjets) == 0) : is0b = True
     MET = event.MET_pt    
@@ -337,9 +347,9 @@ class ModuleMuMuTau(Module):
       self.npu[0]           = event.Pileup_nPU
       self.npu_true[0]      = event.Pileup_nTrueInt
       try:
-        self.NUP[0]         = event.LHE_Njets ##number of partons for stitching (LHE_Njets)
+        self.NUP[0]         = event.LHE_Njets##number of partons for stitching (LHE_Njets)
       except RuntimeError:
-        self.NUP[0]         = -1        
+        self.NUP[0]         = -1
       self.genweight[0]     = event.genWeight
       self.puweight[0]      = self.puTool.getWeight(event.Pileup_nTrueInt)
       # Z and Top pT weights
@@ -353,10 +363,10 @@ class ModuleMuMuTau(Module):
         self.pt_moth1[0]    = max(toppt1,toppt2)
         self.pt_moth2[0]    = min(toppt1,toppt2)
         self.ttptweight[0]  = getTopPtWeight(toppt1,toppt2)
-      # MUON WEIGHTS
-      self.trigweight[0]    = self.muSFs.getTriggerSF(muon0.pt,muon0.eta) # assume leading muon was triggered on
-      self.idisoweight_1[0] = self.muSFs.getIdIsoSF(muon0.pt,muon0.eta)
-      self.idisoweight_2[0] = self.muSFs.getIdIsoSF(muon1.pt,muon1.eta)
+      # ELECTRON WEIGHTS
+      self.trigweight[0]    = self.eleSFs.getTriggerSF(electron0.pt,electron0.eta) # assume leading electron was triggered on
+      self.idisoweight_1[0] = self.eleSFs.getIdIsoSF(electron0.pt,electron0.eta)
+      self.idisoweight_2[0] = self.eleSFs.getIdIsoSF(electron1.pt,electron1.eta)
       # TAU WEIGHTS
       self.idweightTdm_tau[0]  = 1.0
       self.idweightT_tau[0]    = 1.0
@@ -377,21 +387,21 @@ class ModuleMuMuTau(Module):
 
 
     # SAVE CONTROL VARIABLES
-    self.pt_mu0[0]   = muon0.pt
-    self.eta_mu0[0]  = muon0.eta
-    self.q_mu0[0]    = muon0.charge
-    self.id_mu0[0]   = muon0.tightId
-    self.iso_mu0[0]  = muon0.pfRelIso04_all
-    self.pt_mu1[0]   = muon1.pt
-    self.eta_mu1[0]  = muon1.eta
-    self.q_mu1[0]    = muon1.charge
-    self.id_mu1[0]   = muon1.tightId
-    self.iso_mu1[0]  = muon1.pfRelIso04_all
-    self.pt_tau[0]   = tau.pt
-    self.eta_tau[0]  = tau.eta
-    self.q_tau[0]    = tau.charge
-    self.id_tau[0]   = tau.idDeepTau2017v2p1VSjet
-    self.iso_tau[0]  = tau.rawIso
+    self.pt_e0[0]   = electron0.pt
+    self.eta_e0[0]  = electron0.eta
+    self.q_e0[0]    = electron0.charge
+    self.id_e0[0]   = electron0.cutBased
+    self.iso_e0[0]  = electron0.pfRelIso03_all
+    self.pt_e1[0]   = electron1.pt
+    self.eta_e1[0]  = electron1.eta
+    self.q_e1[0]    = electron1.charge
+    self.id_e1[0]   = electron1.cutBased
+    self.iso_e1[0]  = electron1.pfRelIso03_all
+    self.pt_tau[0]  = tau.pt
+    self.eta_tau[0] = tau.eta
+    self.q_tau[0]   = tau.charge
+    self.id_tau[0]  = tau.idDeepTau2017v2p1VSjet
+    self.iso_tau[0] = tau.rawIso
 
     isGenuineTau = getIsGenuineTau(self,tau)
     #print "Tau has pt=%s, eta=%s, dz = %s, genPartFlav = %s"%(tau.pt, tau.eta, tau.dz, tau.genPartFlav)
@@ -402,17 +412,18 @@ class ModuleMuMuTau(Module):
     ST = 0.0
   
     for jet in jets: HT += jet.pt
-    for mu in muons: LT += mu.pt
+    for e in electrons: LT += e.pt
     LT += tau.pt
     ST = HT + LT + MET
     
     #DiLepton Vars
     isOnZ = False;
-    dileptonSystem_p4 = muon0.p4()+muon1.p4()
+    dileptonSystem_p4 = electron0.p4()+electron1.p4()
     dilepton_mass = dileptonSystem_p4.M()
+    
     if( 75.0 < dilepton_mass < 105.0) : isOnZ = True
     
-    ##jet to tau fake rate method
+    ## check, jet to tau fake rate method
     IsOnZ             = isOnZ
     TauIsGenuine      = isGenuineTau
     TauPt             = tau.pt
@@ -420,13 +431,13 @@ class ModuleMuMuTau(Module):
     TauDM             = tau.decayMode
     JetN              = len(jets)
     BJetN             = len(bjets)
-    LeptonOnePt       = muon0.pt
-    LeptonTwoPt       = muon1.pt
+    LeptonOnePt       = electron0.pt
+    LeptonTwoPt       = electron1.pt
     DileptonPt        = dileptonSystem_p4.Pt()
     DileptonMass      = dilepton_mass
     DileptonDeltaEta  = dileptonSystem_p4.Eta()
-    DileptonDeltaPhi  = deltaPhi(muon0.phi,muon1.phi)
-    DileptonDeltaR    = muon0.DeltaR(muon1)
+    DileptonDeltaPhi  = deltaPhi(electron0.phi,electron1.phi)
+    DileptonDeltaR    = electron0.DeltaR(electron1)
     
     self.IsOnZ[0]              = IsOnZ
     self.TauIsGenuine[0]       = TauIsGenuine
@@ -434,11 +445,11 @@ class ModuleMuMuTau(Module):
     self.TauEta[0]             = TauEta          
     self.TauDM[0]              = TauDM
     self.JetN[0]               = JetN            
-    self.BJetN[0]              = BJetN         
-    self.MET[0]                = MET              
-    self.HT[0]                 = HT            
-    self.LT[0]                 = LT            
-    self.ST[0]                 = ST            
+    self.BJetN[0]              = BJetN           
+    self.MET[0]                = MET
+    self.HT[0]                 = HT 
+    self.LT[0]                 = LT
+    self.ST[0]                 = ST
     self.LeptonOnePt[0]        = LeptonOnePt     
     self.LeptonTwoPt[0]        = LeptonTwoPt     
     self.DileptonPt[0]         = DileptonPt      
@@ -453,15 +464,15 @@ class ModuleMuMuTau(Module):
     return True
 
 ## Functions
-def fillJetBranches(self,event,tau, muons):
+def fillJetBranches(self,event,tau,electrons):
   """Help function to select jets and b tags, after removing overlap with tau decay candidates """
   jets,   bjets  = [ ], [ ]
-  
+    
   # SELECT JET, remove overlap with selected tau
   for jet in Collection(event,'Jet'):
     if abs(jet.eta)>2.4: continue #4.7: continue
     if jet.DeltaR(tau)<0.5: continue
-    if any(jet.DeltaR(muon)<0.4 for muon in muons): continue ## remove overlap with selected muons as well !?! dR<0.4 optimal???
+    if any(jet.DeltaR(electron)<0.4 for electron in electrons): continue ## remove overlap with selected muons as well !?! dR<0.4 optimal???
     if jet.jetId<2: continue # Tight
     if jet.pt<self.jetCutPt: continue
     jets.append(jet)
@@ -469,7 +480,7 @@ def fillJetBranches(self,event,tau, muons):
     # B TAGGING
     if jet.btagDeepFlavB>self.deepjet_wp.medium and abs(jet.eta)<self.bjetCutEta:
       bjets.append(jet)
-
+    
   return jets, bjets
 
 def getIsGenuineTau(self,tau):
@@ -479,3 +490,11 @@ def getIsGenuineTau(self,tau):
     return True
   else:
     return False
+
+# needed for extracting ele32 trigger from ele32_l1doubleEG
+def is_nth_bit_set(self, x, n):
+  if x & (1 << n): ## & and << -> bitwise operators
+    return True
+  return False
+###########################################################
+

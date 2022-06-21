@@ -104,8 +104,7 @@ def doCompareJson(dirList, name, **kwargs):
 
     # Provide these as options in the future
     graphDict = {}
-    #prongList = ["1prong", "3prong"]
-    prongList = [""]
+    prongList = ["1prong", "3prong"]
     etaList   = ["Barrel", "Endcap"]
 
     # For-loop: All nProngs

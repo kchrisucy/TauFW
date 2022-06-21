@@ -28,7 +28,7 @@ leptonMass <= 94'
   elif 'eetau' in channel:
     #baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && JetN >= 1 && DileptonMass >= 88 && DileptonMass <= 94'
     #baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && DileptonMass >= 88 && DileptonMass <= 94'
-    baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && iso_tau<0.15 && metfilter && TauIdVSe >= 16 && TauIdVSmu >= 8 && DileptonMass >= 88 && DileptonMass <= 94'
+    baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && metfilter && DileptonMass >= 88 && DileptonMass <= 94'
   else:
     raise IOError("No baseline selection for channel %r defined!"%(channel))
 
@@ -53,6 +53,7 @@ leptonMass <= 94'
   maxPt = 120
   pts = [20]
   etas = ["Barrel","Endcap"]
+  prongs = [1,3]
   ptList = [20, 25 , 30 , 40 , 50 , 80]
    
   for wp, wpcut in wps:
@@ -63,29 +64,41 @@ leptonMass <= 94'
         ptup = pts[i+1]
         name = "%s_pt%d-%d"%(wp,ptlow,ptup)
         tit  = "%s, %d < pt < %d GeV"%(wp,ptlow,ptup)
-        cut  = "%s && %s<JetPt && JetPt<%s"%(basecut,ptlow,ptup)
+        cut  = "%s && %s<TauPt && TauPt<%s"%(basecut,ptlow,ptup)
       else: # pt > ptlow (no upper pt cut)
         name = "%s_pt%d-pt%s"%(wp,ptlow,maxPt)
         tit  = "%s, %d < pt < %d GeV"%(wp,ptlow,maxPt)
-        cut  = "%s && %s<JetPt && JetPt<%s"%(basecut,ptlow,maxPt)
+        cut  = "%s && %s<TauPt && TauPt<%s"%(basecut,ptlow,maxPt)
       #selections.append(Sel(name,tit,cut,only=['m_vis','^m_2','mapRecoDM'])) # pt bins
-      for eta in etas:
-        name_ = "%s_eta%s"%(name,eta)
-        tit_  = "%s, eta%s"%(tit,eta)
-        if eta =="Barrel":
-          cut_ = "%s && abs(JetEta)<1.5"%(cut)
-        else: # eta =="Endcap":
-          cut_ = "%s && abs(JetEta)>1.5 && abs(JetEta)<2.4"%(cut)
-        selections.append(Sel(name_,tit_,cut_,only=['JetPt'])) # pt-eta bins
+      for prong in prongs:
+        name_ = "%s_prongs%s"%(name,prong)
+        tit_  = "%s, prongs%s"%(tit,prong)
+        if prong == 1:
+          cut_  = "%s && TauDM<5"%(cut)
+        else: ## prong == 3
+          cut_  = "%s && TauDM>5"%(cut)
+        #selections.append(Sel(name_,tit_,cut_,only=['TauPt'])) # pt-DM bins
+        ###############################  
+        for eta in etas:
+          name__ = "%s_eta%s"%(name_,eta)
+          tit__  = "%s, eta%s"%(tit_,eta)
+          if eta =="Barrel":
+            cut__ = "%s && abs(TauEta)<1.5"%(cut_)
+          else: # eta =="Endcap":
+            cut__ = "%s && abs(TauEta)>1.5 && abs(TauEta)<2.4"%(cut_)
+          selections.append(Sel(name__,tit__,cut__,only=['TauPt'])) # pt-DM bins
   
   # VARIABLES
   variables = [
-    Var('JetPt'            , 'Jet pt'             , 120, 20.0 ,  120.0),
+    Var('TauPt'            , 'Tau pt'             , 120, 20.0 ,  120.0),
     #Var('TauPt'            , 'Tau pt'             , [0, 20, 25 , 30 , 40 , 50 , 80, 120]),
-    Var('JetEta'           , 'Jet eta'            , 25, -2.5 ,   2.5),
-    #Var('TauDM'            , 'Tau DM'             , 12,  0   ,   12 ),
+    Var('TauEta'           , 'Tau eta'            , 25, -2.5 ,   2.5),
+    Var('TauDM'            , 'Tau DM'             , 12,  0   ,   12 ),
   ]
 
+  ## TauDM already 0,1,10 or 11 so if DM<5 -> 1 prong, if DM>5 -> 3 prong
+  #hists_30_barrel_1prong = sample.gethist(variables,"TauPt<30 && TauEta<1.5 && TauDM<5") 
+  
   # PLOT
   selections = filtervars(selections,selfilter) # filter variable list with -V flag
   variables  = filtervars(variables,varfilter)  # filter variable list with -V flag
@@ -106,7 +119,7 @@ leptonMass <= 94'
       text += ("" if '\n' in extratext[:3] else ", ") + extratext
     for stack, variable in stacks.iteritems():
       for h in stack.hists:
-        if "eta" not in selection.filename : continue
+        if "prongs" not in selection.filename : continue
         if ("SingleMuon" not in h.GetName() and "SingleElectron" not in h.GetName() and "EGamma" not in h.GetName() and "Simulation" not in h.GetName()): continue 
         histo = h.Clone()
         #nBinsX = histo.GetNbinsX()

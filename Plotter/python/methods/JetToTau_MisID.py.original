@@ -20,10 +20,13 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
   cuts_Tight        = selection.selection
   LooseNotTight_to_Tight = True
   if LooseNotTight_to_Tight:
-    #cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16 && iso_tau<0.15","id_tau < 16").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos, 
-    cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16 && iso_tau<0.15","id_tau <= 16").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos,
+    # cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16","id_tau >= 1 && id_tau <= 16").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos, 
+    # this should be like this, not as above, correct???
+    cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16","id_tau >= 1 && id_tau < 16").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos, 
   else:
-    cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16 && iso_tau<0.15 &&","").replace("TauIsGenuine","!TauIsGenuine") ## for Loose  histos
+    #cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16","id_tau >= 1").replace("TauIsGenuine","!TauIsGenuine") ## for Loose  histos
+    # this should be like this,			    not as above, correct???
+    #cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16","id_tau >= 1 && id_tau <= 16").replace("TauIsGenuine","!TauIsGenuine") ## for Loose  histos
   #isjetcat       = re.search(r"(nc?btag|n[cf]?jets)",cuts_OS)
   #relax          = 'emu' in self.channel or isjetcat
   samples        = self.samples
@@ -49,6 +52,7 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
   FRkeylist = []
   maxPt = 120
   etas = ["Barrel","Endcap"]
+  prongs = ["1prong","3prong"]
   ptList = [20, 25 , 30 , 40 , 50 , 80]
   
   #dirList = ["plots/UL2016_preVFP/mumutau/TauFakeRate_UL2016_preVFP_mumutau"]
@@ -64,31 +68,39 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
   ## Selections for prong-eta-pT bins, read the values for FakeRates for each prong-eta bin
   ## then read the value for each prong-eta-pT bin and store it in a dictionary with key the same 
   ## string as the title of the specific prong-eta-pT selection
-  ## eta bins        
-  for eta in etas:
-    name__ = "eta%s"%(eta)
-    tit__  = "%s"%(eta)
-    if eta =="Barrel":
-      cut__ = "%s && abs(JetEta)<1.5"%(cuts_LnotTFake)
-    else: # eta =="Endcap":
-      cut__ = "%s && abs(JetEta)>1.5 && abs(JetEta)<2.4"%(cuts_LnotTFake)
-    #FakeRates = fakeFactors.FakeFactors(dirList, "Data", prong, eta, None, "mumutau") ## read the values for FakeRates for each prong-eta bin
-    FakeRates = fakeFactors.FakeFactors(dirList, "Data", "", eta, None, "eetau") ## read the values for FakeRates for each prong-eta bin
-    FRDictinPt  = {}
-    FRDictinPt  = FakeRates.valuesDict
-    FRinPtBins  = list(FRDictinPt.values())[0]
-    for i, ptlow in enumerate(ptList):
-      if i<len(ptList)-1: # ptlow < pt < ptup 
-        ptup = ptList[i+1]
-        name___ = "%s_pt%d-%d"%(name__,ptlow,ptup)
-        tit___  = "%s, %d < pt < %d GeV"%(tit__,ptlow,ptup)
-        cut___  = "%s && %s<JetPt && JetPt<%s"%(cut__,ptlow,ptup)
-      else: # pt > ptlow (no upper pt cut)  
-        name___ = "%s_pt%d_%s"%(name__,ptlow,maxPt)
-        tit___  = "%s, %d < pt < %d GeV"%(tit__,ptlow,maxPt)
-        cut___  = "%s && %s<JetPt && JetPt<%s"%(cut__,ptlow,maxPt)
-      selections_LnotTFake_forFRbins.append(Sel(name___,tit___,cut___)) # pt-DM-eta bins 
-      FRDict[tit___] = FRinPtBins[i] #store the FR value in the dictionary using the title of the specific prong-eta-pT selection as key
+  ## prong bins
+  for prong in prongs:
+    name_ = "%s"%(prong)
+    tit_  = "%s"%(prong)
+    if prong == "1prong":
+      cut_  = "%s && TauDM<5"%(cuts_LnotTFake)
+    else: ## prong == "3prong"
+      cut_  = "%s && TauDM>5"%(cuts_LnotTFake)
+    ## eta bins        
+    for eta in etas:
+      name__ = "%s_eta%s"%(name_,eta)
+      tit__  = "%s, %s"%(tit_,eta)
+      if eta =="Barrel":
+        cut__ = "%s && abs(TauEta)<1.5"%(cut_)
+      else: # eta =="Endcap":
+        cut__ = "%s && abs(TauEta)>1.5 && abs(TauEta)<2.4"%(cut_)
+      #FakeRates = fakeFactors.FakeFactors(dirList, "Data", prong, eta, None, "mumutau") ## read the values for FakeRates for each prong-eta bin
+      FakeRates = fakeFactors.FakeFactors(dirList, "Data", prong, eta, None, "eetau") ## read the values for FakeRates for each prong-eta bin
+      FRDictinPt  = {}
+      FRDictinPt  = FakeRates.valuesDict
+      FRinPtBins  = list(FRDictinPt.values())[0]
+      for i, ptlow in enumerate(ptList):
+        if i<len(ptList)-1: # ptlow < pt < ptup 
+          ptup = ptList[i+1]
+          name___ = "%s_pt%d-%d"%(name__,ptlow,ptup)
+          tit___  = "%s, %d < pt < %d GeV"%(tit__,ptlow,ptup)
+          cut___  = "%s && %s<TauPt && TauPt<%s"%(cut__,ptlow,ptup)
+        else: # pt > ptlow (no upper pt cut)  
+          name___ = "%s_pt%d_%s"%(name__,ptlow,maxPt)
+          tit___  = "%s, %d < pt < %d GeV"%(tit__,ptlow,maxPt)
+          cut___  = "%s && %s<TauPt && TauPt<%s"%(cut__,ptlow,maxPt)
+        selections_LnotTFake_forFRbins.append(Sel(name___,tit___,cut___)) # pt-DM-eta bins 
+        FRDict[tit___] = FRinPtBins[i] #store the FR value in the dictionary using the title of the specific prong-eta-pT selection as key
         
   misIDhists = [ ]
   b_misIDhists_init = False

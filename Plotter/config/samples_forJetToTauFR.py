@@ -28,13 +28,13 @@ def getsampleset(channel,era,**kwargs):
   if 'UL' in era: # UltraLegacy
     expsamples = [ # table of MC samples to be converted to Sample objects
       # GROUP NAME                     TITLE                 XSEC      EXTRA OPTIONS
-      #( 'DY', "DYJetsToLL_M-10to50",   "Drell-Yan 10-50",    18610.0  ),
-      ( 'DY', "DYJetsToLL_M-50",       "Drell-Yan 50",        6077.22 , {'extraweight': 'zptweight'} ), # to be removed
-      #( 'DY', "DYJetsToLL_M-50",       "Drell-Yan 50",        5343.0, {'extraweight': 'zptweight'} ), # apply k-factor in stitching
-      #( 'DY', "DY1JetsToLL_M-50",      "Drell-Yan 1J 50",      877.8, {'extraweight': 'zptweight'} ), # buggy DY*Jets Summer19UL
-      #( 'DY', "DY2JetsToLL_M-50",      "Drell-Yan 2J 50",      304.4, {'extraweight': 'zptweight'} ),
-      #( 'DY', "DY3JetsToLL_M-50",      "Drell-Yan 3J 50",      111.5, {'extraweight': 'zptweight'} ),
-      #( 'DY', "DY4JetsToLL_M-50",      "Drell-Yan 4J 50",      44.05, {'extraweight': 'zptweight'} ), 
+      ( 'DY', "DYJetsToLL_M-10to50",   "Drell-Yan 10-50",    18610.0  ),
+      #( 'DY', "DYJetsToLL_M-50",       "Drell-Yan 50",        6077.22 , {'extraweight': 'zptweight'} ), # to be removed ?? 
+      ( 'DY', "DYJetsToLL_M-50",       "Drell-Yan 50",        5343.0, {'extraweight': 'zptweight'} ), # apply k-factor in stitching
+      ( 'DY', "DY1JetsToLL_M-50",      "Drell-Yan 1J 50",      877.8, {'extraweight': 'zptweight'} ), # buggy DY*Jets Summer19UL
+      ( 'DY', "DY2JetsToLL_M-50",      "Drell-Yan 2J 50",      304.4, {'extraweight': 'zptweight'} ),
+      ( 'DY', "DY3JetsToLL_M-50",      "Drell-Yan 3J 50",      111.5, {'extraweight': 'zptweight'} ),
+      ( 'DY', "DY4JetsToLL_M-50",      "Drell-Yan 4J 50",      44.05, {'extraweight': 'zptweight'} ), 
       ( 'WJ', "WJetsToLNu",            "W + jets",           52940.0  ),
       ( 'WJ', "W1JetsToLNu",           "W + 1J",              8104.0  ),
       ( 'WJ', "W2JetsToLNu",           "W + 2J",              2793.0  ),
@@ -58,8 +58,10 @@ def getsampleset(channel,era,**kwargs):
     LOG.throw(IOError,"Did not recognize era %r!"%(era))
   
   # OBSERVED DATA SAMPLES
-  if 'mumutau'  in channel: dataset = "SingleMuon_Run%d?"%year
-  # elif 'etau'   in channel: dataset = "EGamma_Run%d?"%year if year==2018 else "SingleElectron_Run%d?"%year
+  if 'mumutau'  in channel: 
+    dataset = "SingleMuon_Run%d?"%year
+  elif 'eetau'   in channel: 
+    dataset = "EGamma_Run%d?"%year if year==2018 else "SingleElectron_Run%d?"%year
   else:
     LOG.throw(IOError,"Did not recognize channel %r!"%(channel))
   datasample = ('Data',dataset) # GROUP, NAME
@@ -73,10 +75,11 @@ def getsampleset(channel,era,**kwargs):
   # SAMPLE SET
   if weight=="":
     weight = ""
-  elif channel in ['mumutau']:
+  elif channel in ['mumutau','eetau']:
+    weight = "genweight*trigweight*puweight*idisoweight_1*idisoweight_2"
     #weight = "genweight*trigweight*puweight*idisoweight_1*idisoweight_2*ltfweight_tau"
     #weight = "genweight*trigweight*puweight*idisoweight_1*idisoweight_2"
-    weight = "genweight*trigweight*puweight"
+    #weight = "genweight*trigweight*puweight"
   else: # mumu, emu, ...
     #weight = "genweight*trigweight*puweight*idisoweight_1*idisoweight_2"
     weight = ""
@@ -92,10 +95,10 @@ def getsampleset(channel,era,**kwargs):
   # STITCH
   # Note: titles are set via STYLE.sample_titles
   sampleset.stitch("W*Jets",    incl='WJ',  name='WJ'     ) # W + jets
-  #sampleset.stitch("DY*J*M-50", incl='DYJ', name="DY_M50" ) # Drell-Yan, M > 50 GeV
+  sampleset.stitch("DY*J*M-50", incl='DYJ', name="DY_M50" ) # Drell-Yan, M > 50 GeV
   
   # JOIN
-  # sampleset.join('DY', name='DY' ) # Drell-Yan, M < 50 GeV + M > 50 GeV
+  sampleset.join('DY', name='DY' ) # Drell-Yan, M < 50 GeV + M > 50 GeV
   sampleset.join('VV','WZ','WW','ZZ', name='VV' ) # Diboson
   sampleset.join('TT', name='TT' ) # ttbar
   sampleset.join('ST', name='ST' ) # single top

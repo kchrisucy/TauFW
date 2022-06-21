@@ -25,16 +25,18 @@ def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era=
   elif 'eetau' in channel:
     if closure:
       ## electrons have already been chosen mvaFall17V2Iso_WP90 in the skimming part, the id_e is for cut-based ID, you should not use it  
-      baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 16 && iso_tau<0.15 && metfilter && TauIdVSe >= 16 && TauIdVSmu >= 8 && !(DileptonMass >= 88 && DileptonMass <= 94) && DileptonMass >= 70 && DileptonMass <= 110 && TauIsGenuine'
+      #baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 16 && iso_tau<0.15 && metfilter && JetN >= 1 && !(DileptonMass >= 88 && DileptonMass <= 94) && DileptonMass >= 70 && DileptonMass <= 110 && TauIsGenuine'
+      baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 16 && iso_tau<0.15 && metfilter && !(DileptonMass >= 88 && DileptonMass <= 94) && DileptonMass >= 70 && DileptonMass <= 110 && TauIsGenuine'
     else:
-      baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && TauIdVSe >= 16 && TauIdVSmu >= 8 && DileptonMass >= 88 && DileptonMass <= 94'
-      baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && TauIdVSe >= 16 && TauIdVSmu >= 8 && !(DileptonMass >= 88 && DileptonMass <= 94) && DileptonMass >= 70 && DileptonMass <= 110'
+      # baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && JetN >= 1 && !(DileptonMass >= 88 && DileptonMass <= 94) && DileptonMass >= 70 && DileptonMass <= 110'
+      baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && !(DileptonMass >= 88 && DileptonMass <= 94) && DileptonMass >= 70 && DileptonMass <= 110'
+      #baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && JetN >= 1 && DileptonMass >= 88 && DileptonMass <= 94' 
   else:
     raise IOError("No baseline selection for channel %r defined!"%(channel))
 
   selections = [
-    #Sel("Medium",baseline),
-    Sel("baseline",baseline),
+    Sel("Medium",baseline),
+    #Sel("baseline",baseline),
   ]
 
   #### DIFFERENTIAL for TauID measurement #########
@@ -49,7 +51,6 @@ def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era=
 
     for wp, wpcut in wps:
       basecut = baseline.replace("id_tau >= 1",wpcut)
-      basecut = baseline + "&&" +wpcut
       name = "%s"%(wp)
       tit  = "%s"%(wp)
       cut  = "%s"%(basecut)
@@ -58,8 +59,6 @@ def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era=
   # VARIABLES
   variables = [
     #Var('TauPt'            , 'Tau pt'             , 60,  0   ,  300),
-    Var('JetPt'            , 'Jet pt'             , [20, 25 , 30 , 40 , 50 , 80, 120]),
-    Var('JetEta'           , 'Jet eta'            , 25, -2.5 ,   2.5),
     Var('TauPt'            , 'Tau pt'             , [20, 25 , 30 , 40 , 50 , 80, 120]),
     Var('id_tau'           , 'Tau id'             , 20,  0   ,  20  ),
     Var('TauEta'           , 'Tau eta'            , 25, -2.5 ,   2.5),

@@ -138,7 +138,7 @@ class FakeFactors:
         return
 
     def GetAnalysisType(self, analysisType):
-        myAnalyses = ["HToTauNu", "HToTB", "HToHW", "HToHW_2ta", "HToHW_lt", "mumutau"]
+        myAnalyses = ["HToTauNu", "HToTB", "HToHW", "HToHW_2ta", "HToHW_lt", "mumutau","eetau"]
 
         if analysisType in myAnalyses:
            return analysisType
@@ -254,10 +254,16 @@ class FakeFactors:
 
         # For-loop: All pt ranges and append to list
         if self.ptRatio != None:
-            key = "%s_%s_%s_%s" % (self.analysisType, self.nProng, self.etaRegion, self.ptRatio)
+            if self.nProng == "":
+                key = "%s_%s_%s" % (self.analysisType, self.etaRegion, self.ptRatio)
+            else:
+                key = "%s_%s_%s_%s" % (self.analysisType, self.nProng, self.etaRegion, self.ptRatio)
             #key = "merged_%s_%s_%s" % (self.decayMode, self.etaRegion, self.ptRatio)
         else:
-            key = "%s_%s_%s" % (self.analysisType, self.nProng, self.etaRegion)
+            if self.nProng == "":
+                key = "%s_%s" % (self.analysisType, self.etaRegion)
+            else:
+                key = "%s_%s_%s" % (self.analysisType, self.nProng, self.etaRegion)
             #key = "merged_%s_%s" % (self.decayMode, self.etaRegion)
 
         dataList = self.jsonDataDict[jsonFile][key][self.dataType]
@@ -289,10 +295,16 @@ class FakeFactors:
             ptRange = self.ptRangeDict[f]
 
             if self.ptRatio != None:
-                key = "%s_%s_%s_%s" % (self.analysisType, self.nProng, self.etaRegion, self.ptRatio)
+                if self.nProng == "":
+                    key = "%s_%s_%s" % (self.analysisType, self.etaRegion, self.ptRatio)
+                else:
+                    key = "%s_%s_%s_%s" % (self.analysisType, self.nProng, self.etaRegion, self.ptRatio)
                 #key = "merged_%s_%s_%s" % (self.decayMode, self.etaRegion, self.ptRatio)
             else:
-                key = "%s_%s_%s" % (self.analysisType, self.nProng, self.etaRegion)
+                if self.nProng == "":
+                    key = "%s_%s" % (self.analysisType, self.etaRegion)
+                else:
+                    key = "%s_%s_%s" % (self.analysisType, self.nProng, self.etaRegion)
                 #key = "merged_%s_%s" % (self.decayMode, self.etaRegion)
 
             try:
@@ -329,6 +341,7 @@ class FakeFactors:
         finalStates["HToHW_lt"] = "#mu#tau_{h} and e#tau_{h} final states"
         finalStates["HToTB"]    = "fully hadronic final state"
         finalStates["mumutau"]    = "#mu#mu#tau_{h}"
+        finalStates["eetau"]    = "ee#tau_{h}"
         if analysisType==None:
             return finalStates[self.analysisType]
         else:
@@ -528,7 +541,10 @@ class FakeFactors:
         #gr.SetName("FakeFactors_%s" % (jsonFile) )
         #gr.SetTitle("FakeFactors_%s" % (os.path.join(jsonFile.split("/")[-2] , os.path.basename(jsonFile) )) )
         gr.SetTitle("%s" % (os.path.join(jsonFile.split("/")[-2] , os.path.basename(jsonFile) )) )
-        gr.SetName("%s_%s_%s_%s" % (self.dataType, self.GetDataEraFromJson(os.path.basename(jsonFile)), self.GetNprong(), self.GetEtaRegion()) )
+        if self.GetNprong() == "":
+            gr.SetName("%s_%s_%s" % (self.dataType, self.GetDataEraFromJson(os.path.basename(jsonFile)), self.GetEtaRegion()) )
+        else:
+            gr.SetName("%s_%s_%s_%s" % (self.dataType, self.GetDataEraFromJson(os.path.basename(jsonFile)), self.GetNprong(), self.GetEtaRegion()) )
         setStyle(gr)
         return gr
 
