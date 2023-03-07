@@ -128,6 +128,7 @@ class ModuleMuMETTau(Module):
     self.eta_tau  = np.zeros(1,dtype='f')
     self.q_tau    = np.zeros(1,dtype='i')
     self.id_tau   = np.zeros(1,dtype='i')
+    self.idv2p5_tau   = np.zeros(1,dtype='i')
     self.iso_tau  = np.zeros(1,dtype='f')
     ## Jet to tau FR
     self.JetPt              = np.zeros(1,dtype='f')
@@ -138,6 +139,8 @@ class ModuleMuMETTau(Module):
     self.TauDM              = np.zeros(1,dtype='i')
     self.TauIdVSe           = np.zeros(1,dtype='i')
     self.TauIdVSmu          = np.zeros(1,dtype='i')
+    self.TauIdVSev2p5       = np.zeros(1,dtype='i')
+    self.TauIdVSmuv2p5      = np.zeros(1,dtype='i')
     self.JetN               = np.zeros(1,dtype='i')
     self.MET                = np.zeros(1,dtype='f')
     self.HT                 = np.zeros(1,dtype='f')
@@ -176,6 +179,7 @@ class ModuleMuMETTau(Module):
     self.tree.Branch('eta_tau',  self.eta_tau, 'eta_tau/F')
     self.tree.Branch('q_tau',    self.q_tau,   'q_tau/I'  )
     self.tree.Branch('id_tau',   self.id_tau,  'id_tau/I' )
+    self.tree.Branch('idv2p5_tau',   self.idv2p5_tau,  'idv2p5_tau/I' )
     self.tree.Branch('iso_tau',  self.iso_tau, 'iso_tau/F')
     ## Jet to tau FR
     self.tree.Branch("JetPt"           ,  self.JetPt           , "JetPt/F"            )
@@ -186,6 +190,8 @@ class ModuleMuMETTau(Module):
     self.tree.Branch("TauDM"           ,  self.TauDM           , "TauDM/I"            ) 
     self.tree.Branch("TauIdVSe"        ,  self.TauIdVSe        , "TauIdVSe/I"         )
     self.tree.Branch("TauIdVSmu"       ,  self.TauIdVSmu       , "TauIdVSmu/I"        )   
+    self.tree.Branch("TauIdVSev2p5"    ,  self.TauIdVSev2p5    , "TauIdVSev2p5/I"     )
+    self.tree.Branch("TauIdVSmuv2p5"   ,  self.TauIdVSmuv2p5   , "TauIdVSmuv2p5/I"    )   
     self.tree.Branch("JetN"            ,  self.JetN            , "JetN/I"             ) 
     self.tree.Branch("MET"             ,  self.MET             , "MET/F"              ) 
     self.tree.Branch("HT"              ,  self.HT              , "HT/F"               ) 
@@ -272,7 +278,7 @@ class ModuleMuMETTau(Module):
       #if tau.idDeepTau2017v2p1VSe<16: continue # medium Vse
       #if tau.idDeepTau2017v2p1VSmu<8: continue # tight Vsmu 
       #####################################
-      if tau.idDeepTau2017v2p1VSjet<1: continue # require minimum WP
+      #if tau.idDeepTau2017v2p1VSjet<1: continue # require minimum WP
       if jet.DeltaR(tau)>0.3: continue # make sure the tau matches to the fake tau candidate
       taus.append(tau)
     if len(taus)!=1:
@@ -324,7 +330,10 @@ class ModuleMuMETTau(Module):
       if electron.DeltaR(jet)<0.4: continue
       if electron.DeltaR(tau)<0.4: continue
       if any(electron.DeltaR(muon)<0.3 for muon in muons): continue ## remove overlap with selected muons as well !?! dR<0.3 optimal???
-      if electron.convVeto==1 and electron.lostHits<=1 and electron.mvaFall17V2noIso_WPL:
+      #kc for v2p5
+      #if electron.convVeto==1 and electron.lostHits<=1 and electron.mvaFall17V2noIso_WPL:
+      if electron.convVeto==1 and electron.mvaNoIso_WPL:
+        ##########
         Electrons.append(electron)
     if len(Electrons)>0 : return False
     self.cutflow.Fill(self.cut_elecveto)
@@ -385,6 +394,7 @@ class ModuleMuMETTau(Module):
     self.eta_tau[0]  = tau.eta
     self.q_tau[0]    = tau.charge
     self.id_tau[0]   = tau.idDeepTau2017v2p1VSjet
+    self.idv2p5_tau[0]   = tau.idDeepTau2018v2p5VSjet
     self.iso_tau[0]  = tau.rawIso
 
     isGenuineTau = False
@@ -426,6 +436,8 @@ class ModuleMuMETTau(Module):
     TauDM             = tau.decayMode
     TauIdVSe          = tau.idDeepTau2017v2p1VSe
     TauIdVSmu         = tau.idDeepTau2017v2p1VSmu
+    TauIdVSev2p5      = tau.idDeepTau2018v2p5VSe
+    TauIdVSmuv2p5     = tau.idDeepTau2018v2p5VSmu
     JetN              = len(jets)
     LeptonOnePt       = muon0.pt
     LeptonMETTMass    = TMass_leptonMET
@@ -439,6 +451,8 @@ class ModuleMuMETTau(Module):
     self.TauDM[0]              = TauDM
     self.TauIdVSe[0]           = TauIdVSe
     self.TauIdVSmu[0]          = TauIdVSmu
+    self.TauIdVSev2p5[0]       = TauIdVSev2p5
+    self.TauIdVSmuv2p5[0]      = TauIdVSmuv2p5
     self.JetN[0]               = JetN       
     self.MET[0]                = MET              
     self.HT[0]                 = HT            

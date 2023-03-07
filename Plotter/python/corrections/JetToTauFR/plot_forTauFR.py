@@ -34,9 +34,19 @@ def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era=
       #baseline = 'iso_e0 < 0.15 && iso_e1< 0.15 && (q_e0*q_e1) <= 0 && id_tau >= 1 && iso_tau<0.15 && metfilter && TauIdVSe >= 16 && TauIdVSmu >= 8 && !(DileptonMass >= 88 && DileptonMass <= 94) && DileptonMass >= 70 && DileptonMass <= 110'
   if 'mumettau' in channel:
     if closure:
-      baseline = 'id_mu0 && iso_mu0 < 0.15 && id_tau >= 8 && iso_tau<0.15 && metfilter && TauIdVSe >= 16 && TauIdVSmu >= 8 && LeptonMETTMass >= 70 && MET <= 40 && TauIsGenuine'
+      #baseline = 'id_mu0 && iso_mu0 < 0.15 && id_tau >= 8 && iso_tau<0.15 && metfilter && TauIdVSe >= 16 && TauIdVSmu >= 8 && LeptonMETTMass >= 70 && MET <= 40 && TauIsGenuine'
+      ## for v2p5, the produced Nano files have the id_object not in powers of 2 but in integers
+      ## this means that for example, for Tight Tau_idDeepTau2017v2p1VSjet, one should ask for >=32 in the standard Nano integration
+      ## but for the private integration for studying v2p5, one should ask for >= 6 
+      baseline = 'id_mu0 && iso_mu0 < 0.15 && id_tau >= 6 && iso_tau<0.15 && metfilter && TauIdVSe >= 5 && TauIdVSmu >= 4 && LeptonMETTMass >= 70 && MET <= 40 && TauIsGenuine'
+      #baseline = 'id_mu0 && iso_mu0 < 0.15 && idv2p5_tau >= 6 && iso_tau<0.15 && metfilter && TauIdVSev2p5 >= 5 && TauIdVSmuv2p5 >= 4 && LeptonMETTMass >= 70 && MET <= 40 && TauIsGenuine'
     else:
-      baseline = 'id_mu0 && iso_mu0 < 0.15 && id_tau >= 1  && iso_tau<0.15 && metfilter && TauIdVSe >= 16 && TauIdVSmu >= 8 && LeptonMETTMass >= 70'
+      #baseline = 'id_mu0 && iso_mu0 < 0.15 && id_tau >= 1  && iso_tau<0.15 && metfilter && TauIdVSe >= 16 && TauIdVSmu >= 8 && LeptonMETTMass >= 70'
+      ## for v2p5, the produced Nano files have the id_object not in powers of 2 but in integers
+      ## this means that for example, for Tight Tau_idDeepTau2017v2p1VSjet, one should ask for >=32 in the standard Nano integration
+      ## but for the private integration for studying v2p5, one should ask for >= 6 
+      #baseline = 'id_mu0 && iso_mu0 < 0.15 && id_tau >= 1  && iso_tau<0.15 && metfilter && TauIdVSe >= 5 && TauIdVSmu >= 4 && LeptonMETTMass >= 70'
+      baseline = 'id_mu0 && iso_mu0 < 0.15 && idv2p5_tau >= 1  && iso_tau<0.15 && metfilter && TauIdVSev2p5 >= 5 && TauIdVSmuv2p5 >= 4 && LeptonMETTMass >= 70'
   else:
     raise IOError("No baseline selection for channel %r defined!"%(channel))
 
@@ -49,18 +59,35 @@ def plot(sampleset,channel,parallel=True,tag="",extratext="",outdir="plots",era=
   if not closure :
     print(baseline)
     LooseTauWP = 'VVVLoose'
-    TightTauWP = 'LooseWP' ## SOS, if you put 'Loose' it makes a kind of a conflict with the Loose definition in FakeRateMethod
-    #TightTauWP = 'Medium'
+    #TightTauWP = 'LooseWP' ## SOS, if you put 'Loose' it makes a kind of a conflict with the Loose definition in FakeRateMethod
+    TightTauWP = 'MediumNew'
     #TightTauWP = 'Tight'
+    ##kc for v2p5 studies ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #wps = [
+    #  (LooseTauWP,'id_tau >= 1'),
+    #  (TightTauWP,'id_tau >= 8'),
+    #  #(TightTauWP,'id_tau >= 16'),
+    #  #(TightTauWP,'id_tau >= 32'),
+    #]
+    #wps = [
+    #  (LooseTauWP,'id_tau >= 1'),
+    #  #  (TightTauWP,'id_tau >= 4'),
+    #  (TightTauWP,'id_tau >= 5'),
+    #  #  #(TightTauWP,'id_tau >= 6'),
+    #]
     wps = [
-      (LooseTauWP,'id_tau >= 1'),
-      (TightTauWP,'id_tau >= 8'),
-      #(TightTauWP,'id_tau >= 16'),
-      #(TightTauWP,'id_tau >= 32'),
+      (LooseTauWP,'idv2p5_tau >= 1'),
+      #(TightTauWP,'idv2p5_tau >= 4'),
+      (TightTauWP,'idv2p5_tau >= 5'),
+      #(TightTauWP,'idv2p5_tau >= 6'),
     ]
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     for wp, wpcut in wps:
-      basecut = baseline.replace("id_tau >= 1",wpcut)
+      ##kc for v2p5 studies +++++++++
+      #basecut = baseline.replace("id_tau >= 1",wpcut)
+      basecut = baseline.replace("idv2p5_tau >= 1",wpcut)
+      ##+++++++++++++++++++++++++++++
       #basecut = baseline + " && " +wpcut
       name = "%s"%(wp)
       tit  = "%s"%(wp)

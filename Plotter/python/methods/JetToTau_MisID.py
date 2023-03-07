@@ -22,7 +22,13 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
   if LooseNotTight_to_Tight:
     # cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16","id_tau >= 1 && id_tau <= 16").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos, 
     # this should be like this, not as above, correct???
-    cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 8","id_tau >= 1 && id_tau < 8").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos, 
+    #cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 8","id_tau >= 1 && id_tau < 8").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos, 
+    #for v2p5 studies
+    # id_tau = 4 -> Loose (same for idv2p5_tau
+    # id_tau = 5 -> Medium
+    # id_tau = 6 -> Tight
+    cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 6","id_tau >= 1 && id_tau < 6").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos, 
+    #cuts_LnotTFake    = cuts_Tight.replace("idv2p5_tau >= 6","idv2p5_tau >= 1 && idv2p5_tau < 6").replace("TauIsGenuine","!TauIsGenuine") ## for Loose-not-Tight histos, 
   else:
     cuts_LnotTFake    = cuts_Tight.replace("id_tau >= 16","id_tau >= 1").replace("TauIsGenuine","!TauIsGenuine") ## for Loose  histos
     # this should be like this,    not as above, correct???
@@ -65,7 +71,7 @@ def JetToTau_MisID(self, variables, selection, **kwargs):
   #dirList = ["plots/UL2018/mumutau/TauFakeRate_UL2018_mumutau"]
   #dirList = ["plots/UL2018/eetau/TauFakeRate_UL2018_eetau"]
   #dirList = ["plots/UL2018/mumettau/TauFakeRate_UL2018_Medium_mumettau"]
-  dirList = ["plots/UL2018/mumettau/TauFakeRate_UL2018_Loose_mumettau"]
+  dirList = ["plots/UL2018/mumettau/TauFakeRate_UL2018_Tight_mumettau"]
   FRDict = {}
 
   ## Selections for prong-eta-pT bins, read the values for FakeRates for each prong-eta bin
